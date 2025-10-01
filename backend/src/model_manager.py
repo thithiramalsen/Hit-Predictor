@@ -1,4 +1,7 @@
 import os
+import joblib
+import xgboost as xgb
+from preprocessing import prepare_dataframe_from_dict
 
 def discover_models(model_root="models"):
     """Recursively discover model files in all subfolders, skipping preprocessors."""
@@ -33,3 +36,49 @@ def select_model(models):
     except Exception:
         print("Invalid selection. Exiting.")
         exit(1)
+
+def get_preprocessor_path(model_path):
+    """Return the correct preprocessor path for a given model path."""
+    preproc_dir = os.path.dirname(model_path)
+    fname = os.path.basename(model_path)
+    if "xg_r" in fname:
+        return os.path.join(preproc_dir, "preprocessor_xg_r.joblib")
+    elif "xg_c" in fname:
+        return os.path.join(preproc_dir, "preprocessor_xg_c.joblib")
+    elif "rf_r" in fname:
+        return os.path.join(preproc_dir, "preprocessor_rf_r.joblib")
+    elif "rf_c" in fname:
+        return os.path.join(preproc_dir, "preprocessor_rf_c.joblib")
+    else:
+        return os.path.join(preproc_dir, "preprocessor.joblib")
+
+def load_artifacts(model_path, impute_values_path=None):
+    """Load model, matching preprocessor, and impute values."""
+    model = joblib.load(model_path)
+    preproc_path = get_preprocessor_path(model_path)
+    preproc = joblib.load(preproc_path)
+    impute_values = None
+    if impute_values_path:
+        impute_values = joblib.load(impute_values_path)
+    return model, preproc, impute_values
+
+def predict_from_features_dict(feat_dict, model_type, model_path):
+    model, preproc, impute_values = load_artifacts(model_path)
+    df = prepare_dataframe_from_dict(feat_dict, impute_values)
+    X = preproc.transform(df)
+    if "xgboost" in model_type and "regression" in model_type:
+        dmatrix = xgb.DMatrix(X)
+        return float(model.predict(dmatrix)[0])
+    elif "xgboost" in model_type and "classification" in model_type:
+        pred_prob = model.predict_proba(X)[0][1]
+        pred_class = int(pred_prob >= 0.5)
+        return {"class": pred_class, "probability": float(pred_prob)}
+    elif "randomforest" in model_type:
+        if "regression" in model_type:
+            return float(model.predict(X)[0])
+        else:
+            prob = model.predict_proba(X)[0][1]
+            pred_class = int(prob >= 0.5)
+            return {"class": pred_class, "probability": float(prob)}
+    else:
+        raise ValueError("Unknown model type or unsupported model.")
