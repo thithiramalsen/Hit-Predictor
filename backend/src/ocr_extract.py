@@ -24,12 +24,24 @@ def ocr_with_easyocr(image_path):
 def extract_features_from_text(text: str) -> dict:
     text = text.lower()
     out = {}
+    # Extract key string (e.g., "key: e minor")
+    key_match = re.search(r"key[:\s]*([a-g][#b]?[\s]?(major|minor)?)", text)
+    if key_match:
+        out["key_str"] = key_match.group(1).strip()
+    # Extract explicit string (e.g., "explicit: yes")
+    explicit_match = re.search(r"explicit[:\s]*(yes|no)", text)
+    if explicit_match:
+        out["explicit_str"] = explicit_match.group(1).strip()
+    # Extract happiness/valence
+    happiness_match = re.search(r"happiness[:\s]*([0-9]+)", text)
+    if happiness_match:
+        out["happiness"] = float(happiness_match.group(1))
+    # Existing float extraction logic...
     float_pattern = r"([a-zA-Z %]+?)[:\s]*([-+]?\d*\.\d+|\d+[:\d]*)"
     matches = re.findall(float_pattern, text)
     for k, v in matches:
         key = k.strip()
         val = v.strip()
-        # heuristics for fields
         try:
             if ":" in val:  # duration mm:ss matched as "mm:ss"
                 mm, ss = val.split(":")
@@ -60,10 +72,9 @@ def extract_features_from_text(text: str) -> dict:
         elif "tempo" in key:
             out["tempo"] = val_num
         elif "duration" in key:
-            # fallback if 'duration: 215' (seconds)
-            if val_num > 1000:  # ms
+            if val_num > 1000:
                 out["duration_min"] = val_num / 60000.0
-            elif val_num > 120:  # seconds
+            elif val_num > 120:
                 out["duration_min"] = val_num / 60.0
             else:
                 out["duration_min"] = val_num
