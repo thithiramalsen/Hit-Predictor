@@ -11,3 +11,5 @@ pytesseract
 opencv-python
 easyocr
 tqdm
+tensorflow
+
