@@ -93,6 +93,20 @@ def save_clean_csv(raw_csv_path, out_path="data/Spotify_clean.csv"):
     print(f"Saved cleaned dataset to {out_path}")
     return df_clean
 
+def load_impute_values(path=None):
+    path = path or os.path.join(MODEL_DIR, "impute_values.joblib")
+    return joblib.load(path)
+
+def prepare_dataframe_from_dict(feat_dict, impute_values=None):
+    import pandas as pd
+    # Use impute_values as defaults, update with feat_dict
+    if impute_values is None:
+        impute_values = load_impute_values()
+    data = impute_values.copy()
+    data.update(feat_dict)
+    df = pd.DataFrame([data])
+    return df
+
 
 if __name__ == "__main__":
     # Quick CLI to fit pipeline
