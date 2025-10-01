@@ -1,33 +1,56 @@
 # backend/src/predict.py
-import joblib
 import os
-import pandas as pd
+import joblib
 import xgboost as xgb
 from preprocessing import load_pipeline, load_impute_values, prepare_dataframe_from_dict
 from ocr_extract import extract_from_image
 from utils import parse_key, parse_mode, parse_explicit, parse_valence
-
-MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "xgboost"))
-MODEL_PATH = os.path.join(MODEL_DIR, "model_xg_r.joblib")
+from model_manager import discover_models, select_model
 
 FEATURES_0_1 = [
     "acousticness", "danceability", "energy", "instrumentalness",
     "liveness", "speechiness", "valence"
 ]
 
-def load_artifacts():
-    model = joblib.load(MODEL_PATH)
-    preproc = load_pipeline()
+def load_artifacts(model_path):
+    model = joblib.load(model_path)
+    preproc_dir = os.path.dirname(model_path)
+    # Select preprocessor based on model filename
+    if "xg_r" in model_path:
+        preproc_path = os.path.join(preproc_dir, "preprocessor_xg_r.joblib")
+    elif "xg_c" in model_path:
+        preproc_path = os.path.join(preproc_dir, "preprocessor_xg_c.joblib")
+    else:
+        preproc_path = os.path.join(preproc_dir, "preprocessor.joblib")
+    preproc = joblib.load(preproc_path)
     impute_values = load_impute_values()
     return model, preproc, impute_values
 
-def predict_from_features_dict(feat_dict: dict):
-    model, preproc, impute_values = load_artifacts()
+def predict_from_features_dict(feat_dict, model_type, model_path):
+    model, preproc, impute_values = load_artifacts(model_path)
     df = prepare_dataframe_from_dict(feat_dict, impute_values)
     X = preproc.transform(df)
-    dmatrix = xgb.DMatrix(X)
-    pred = model.predict(dmatrix)[0]
-    return float(pred)
+    # XGBoost regression
+    if "xgboost" in model_type and "regression" in model_type:
+        dmatrix = xgb.DMatrix(X)
+        return float(model.predict(dmatrix)[0])
+    # XGBoost classification
+    elif "xgboost" in model_type and "classification" in model_type:
+        # XGBClassifier expects array, not DMatrix
+        pred_prob = model.predict_proba(X)[0][1]  # Probability for class '1' (Hit)
+        pred_class = int(pred_prob >= 0.5)
+        return {"class": pred_class, "probability": float(pred_prob)}
+    # RandomForest regression/classification (scikit-learn)
+    elif "randomforest" in model_type:
+        if "regression" in model_type:
+            return float(model.predict(X)[0])
+        else:
+            prob = model.predict_proba(X)[0][1]
+            pred_class = int(prob >= 0.5)
+            return {"class": pred_class, "probability": float(prob)}
+    # Add more model types as needed
+    else:
+        raise ValueError("Unknown model type or unsupported model.")
 
 def predict_from_image_file(image_path: str):
     feat = extract_from_image(image_path)
@@ -263,23 +286,54 @@ def normalize_extracted_features(feat):
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) == 2 and sys.argv[1].lower().endswith((".png", ".jpg", ".jpeg")):
-        path = sys.argv[1]
+    models = discover_models("models/xgboost")
+    args = sys.argv[1:]
+
+    selected_model = None
+    model_type = None
+    model_path = None
+
+    if "--model" in args:
+        idx = args.index("--model")
+        if idx + 1 < len(args):
+            selected_model = args[idx + 1]
+            if selected_model in models:
+                model_path = models[selected_model]
+                model_type = selected_model
+            else:
+                print("Model not found. Available models:", list(models.keys()))
+                sys.exit(1)
+        args = [a for a in args if a != "--model" and a != selected_model]
+
+    if len(args) == 1 and args[0] == "--manual":
+        if not selected_model:
+            selected_model, model_type, model_path = select_model(models)
+        _, preproc, impute_values = load_artifacts(model_path)
+        feat = prompt_for_features(impute_values)
+        result = predict_from_features_dict(feat, model_type, model_path)
+        print("Manual input features:", feat)
+        if model_type and "regression" in model_type:
+            print(f"Predicted popularity: {result:.3f}")
+        else:
+            print(f"Predicted class: {'Hit' if result['class'] else 'Non-Hit'} (probability: {result['probability']:.2f})")
+    elif len(args) == 1 and args[0].lower().endswith((".png", ".jpg", ".jpeg")):
+        path = args[0]
         print("Running OCR + predict on:", path)
         feat = extract_from_image(path)
-        feat = normalize_extracted_features(feat)  # <-- Normalize here!
-        _, preproc, impute_values = load_artifacts()
+        feat = normalize_extracted_features(feat)
+        # Prompt for model selection if not provided
+        if not selected_model:
+            selected_model, model_type, model_path = select_model(models)
+        _, preproc, impute_values = load_artifacts(model_path)
         feat = review_and_edit_features(feat, impute_values)
-        val = predict_from_features_dict(feat)
+        result = predict_from_features_dict(feat, model_type, model_path)
         print("Final features used for prediction:", feat)
-        print(f"Predicted popularity: {val:.3f}")
-    elif len(sys.argv) == 2 and sys.argv[1] == "--manual":
-        _, preproc, impute_values = load_artifacts()
-        feat = prompt_for_features(impute_values)
-        val = predict_from_features_dict(feat)
-        print("Manual input features:", feat)
-        print(f"Predicted popularity: {val:.3f}")
+        if model_type and "regression" in model_type:
+            print(f"Predicted popularity: {result:.3f}")
+        else:
+            print(f"Predicted class: {'Hit' if result['class'] else 'Non-Hit'} (probability: {result['probability']:.2f})")
     else:
         print("Usage:")
-        print("  python predict.py path/to/screenshot.png")
-        print("  python predict.py --manual")
+        print("  python predict.py path/to/screenshot.png [--model xgboost_regression|xgboost_classification]")
+        print("  python predict.py --manual [--model xgboost_regression|xgboost_classification]")
+        print("Available models:", list(models.keys()))

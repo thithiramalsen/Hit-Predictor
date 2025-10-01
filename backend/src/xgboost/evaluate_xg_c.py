@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import matplotlib.pyplot as plt
 
 # Paths
-MODEL_PATH = os.path.join("..", "..", "models", "classification", "xgb_classifier.joblib")
+MODEL_PATH = os.path.join("models", "xgboost", "model_xg_c.joblib")
 X_TEST_PATH = os.path.join("..", "..", "data", "X_test_cls.csv")
 Y_TEST_PATH = os.path.join("..", "..", "data", "y_test_cls.csv")
 REPORT_PATH = os.path.join("..", "..", "models", "classification", "confusion_matrix.png")
