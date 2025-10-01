@@ -26,14 +26,11 @@ def basic_clean(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     # Drop exact duplicates
     df.drop_duplicates(inplace=True)
-    # Parse release date/year: ensure year column exists
-    if "year" not in df.columns and "release_date" in df.columns:
-        df["year"] = pd.to_datetime(df["release_date"], errors="coerce").dt.year.fillna(0).astype(int)
     # Duration in minutes
     if "duration_ms" in df.columns:
         df["duration_min"] = df["duration_ms"] / 60000.0
     # Keep relevant columns
-    keep_cols = NUMERIC_FEATURES + BINARY_FEATURES + CATEGORICAL_FEATURES + ["popularity", "year"]
+    keep_cols = NUMERIC_FEATURES + BINARY_FEATURES + CATEGORICAL_FEATURES + ["popularity"]
     # Some datasets might not contain all numeric cols - intersect
     keep = [c for c in keep_cols if c in df.columns]
     df = df[keep].copy()

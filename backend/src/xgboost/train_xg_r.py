@@ -15,7 +15,8 @@ def train(raw_csv_path):
 
     # X, y
     y = df["popularity"].values
-    X_df = df.drop(columns=["popularity"])
+    # After cleaning, drop "year" if present
+    X_df = df.drop(columns=["popularity", "year"], errors="ignore")
     preproc = build_pipeline()
     X = preproc.fit_transform(X_df)
 
