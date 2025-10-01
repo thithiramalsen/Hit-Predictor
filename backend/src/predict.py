@@ -50,8 +50,6 @@ def prompt_for_features(impute_values):
     feat["mode"] = parse_mode(key_str)
     explicit_str = input("Explicit? (Yes/No): ")
     feat["explicit"] = parse_explicit(explicit_str)
-    year = input("Year (e.g., 2022): ")
-    feat["year"] = int(year) if year else 2022
     return feat
 
 def review_and_edit_features(feat, impute_values):
@@ -62,6 +60,8 @@ def review_and_edit_features(feat, impute_values):
     print("\nExtracted features (edit value, see format hints, or press Enter to keep):")
     edited = {}
     for k in impute_values:
+        if k == "year":  # <-- Skip year
+            continue
         val = feat.get(k, impute_values[k])
         # Format hints
         if k in ["danceability", "energy", "acousticness", "instrumentalness", "liveness", "speechiness"]:
@@ -83,8 +83,6 @@ def review_and_edit_features(feat, impute_values):
             prompt = f"{k} (0=Minor, 1=Major) [{val if val is not None else ''}]: "
         elif k == "explicit":
             prompt = f"{k} (0=No, 1=Yes) [{val if val is not None else ''}]: "
-        elif k == "year":
-            prompt = f"{k} (e.g., 2022) [{val if val is not None else ''}]: "
         else:
             prompt = f"{k} [{val if val is not None else ''}]: "
 
@@ -113,8 +111,6 @@ def review_and_edit_features(feat, impute_values):
                     edited[k] = int(user_val)
                 elif k == "explicit":
                     edited[k] = parse_explicit(user_val)
-                elif k == "year":
-                    edited[k] = int(user_val)
                 else:
                     edited[k] = float(user_val)
             except Exception as e:
@@ -294,9 +290,4 @@ if __name__ == "__main__":
         if model_type and "regression" in model_type:
             print(f"Predicted popularity: {result:.3f}")
         else:
-            print(f"Predicted class: {'Hit' if result['class'] else 'Non-Hit'} (probability: {result['probability']:.2f})")
-    else:
-        print("Usage:")
-        print("  python predict.py path/to/screenshot.png [--model xgboost_regression|xgboost_classification]")
-        print("  python predict.py --manual [--model xgboost_regression|xgboost_classification]")
-        print("Available models:", list(models.keys()))
+            print(f"Predicted class: {'Hit' if result['class'] else 'Non-Hit'} (probability: {result['probability']:.2f}")
