@@ -5,52 +5,15 @@ import xgboost as xgb
 from preprocessing import load_pipeline, load_impute_values, prepare_dataframe_from_dict
 from ocr_extract import extract_from_image
 from utils import parse_key, parse_mode, parse_explicit, parse_valence
-from model_manager import discover_models, select_model
+from model_manager import discover_models, select_model, load_artifacts, predict_from_features_dict
 
 FEATURES_0_1 = [
     "acousticness", "danceability", "energy", "instrumentalness",
     "liveness", "speechiness", "valence"
 ]
 
-def load_artifacts(model_path):
-    model = joblib.load(model_path)
-    preproc_dir = os.path.dirname(model_path)
-    # Select preprocessor based on model filename
-    if "xg_r" in model_path:
-        preproc_path = os.path.join(preproc_dir, "preprocessor_xg_r.joblib")
-    elif "xg_c" in model_path:
-        preproc_path = os.path.join(preproc_dir, "preprocessor_xg_c.joblib")
-    else:
-        preproc_path = os.path.join(preproc_dir, "preprocessor.joblib")
-    preproc = joblib.load(preproc_path)
-    impute_values = load_impute_values()
-    return model, preproc, impute_values
+IMPUTE_VALUES_PATH = os.path.join("models", "impute_values.joblib")
 
-def predict_from_features_dict(feat_dict, model_type, model_path):
-    model, preproc, impute_values = load_artifacts(model_path)
-    df = prepare_dataframe_from_dict(feat_dict, impute_values)
-    X = preproc.transform(df)
-    # XGBoost regression
-    if "xgboost" in model_type and "regression" in model_type:
-        dmatrix = xgb.DMatrix(X)
-        return float(model.predict(dmatrix)[0])
-    # XGBoost classification
-    elif "xgboost" in model_type and "classification" in model_type:
-        # XGBClassifier expects array, not DMatrix
-        pred_prob = model.predict_proba(X)[0][1]  # Probability for class '1' (Hit)
-        pred_class = int(pred_prob >= 0.5)
-        return {"class": pred_class, "probability": float(pred_prob)}
-    # RandomForest regression/classification (scikit-learn)
-    elif "randomforest" in model_type:
-        if "regression" in model_type:
-            return float(model.predict(X)[0])
-        else:
-            prob = model.predict_proba(X)[0][1]
-            pred_class = int(prob >= 0.5)
-            return {"class": pred_class, "probability": float(prob)}
-    # Add more model types as needed
-    else:
-        raise ValueError("Unknown model type or unsupported model.")
 
 def predict_from_image_file(image_path: str):
     feat = extract_from_image(image_path)
@@ -308,7 +271,7 @@ if __name__ == "__main__":
     if len(args) == 1 and args[0] == "--manual":
         if not selected_model:
             selected_model, model_type, model_path = select_model(models)
-        _, preproc, impute_values = load_artifacts(model_path)
+        _, preproc, impute_values = load_artifacts(model_path, impute_values_path=IMPUTE_VALUES_PATH)
         feat = prompt_for_features(impute_values)
         result = predict_from_features_dict(feat, model_type, model_path)
         print("Manual input features:", feat)
@@ -324,7 +287,7 @@ if __name__ == "__main__":
         # Prompt for model selection if not provided
         if not selected_model:
             selected_model, model_type, model_path = select_model(models)
-        _, preproc, impute_values = load_artifacts(model_path)
+        _, preproc, impute_values = load_artifacts(model_path, impute_values_path=IMPUTE_VALUES_PATH)
         feat = review_and_edit_features(feat, impute_values)
         result = predict_from_features_dict(feat, model_type, model_path)
         print("Final features used for prediction:", feat)
