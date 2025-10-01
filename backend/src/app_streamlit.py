@@ -9,8 +9,8 @@ import os
 from ocr_extract import extract_from_image
 from preprocessing import load_pipeline, load_impute_values, prepare_dataframe_from_dict
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-MODEL_PATH = os.path.join(MODEL_DIR, "model.joblib")
+MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "xgboost"))
+MODEL_PATH = os.path.join(MODEL_DIR, "model_xg_r.joblib")
 
 @st.cache_resource
 def load_artifacts():

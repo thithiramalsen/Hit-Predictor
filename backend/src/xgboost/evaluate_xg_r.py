@@ -5,12 +5,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from preprocessing import basic_clean, load_pipeline
-from train import train  # only if you want to retrain from here
+from backend.src.xgboost.train_xg_r import train  # only if you want to retrain from here
 import xgboost as xgb
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "Spotify.csv")
-MODEL_PATH = os.path.join(MODEL_DIR, "model.joblib")
+MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "models", "xgboost"))
+DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "data", "Spotify.csv"))
+MODEL_PATH = os.path.join(MODEL_DIR, "model_xg_r.joblib")
 
 def evaluate():
     df = pd.read_csv(DATA_PATH)

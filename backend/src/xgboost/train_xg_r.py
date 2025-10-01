@@ -4,9 +4,9 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, root_mean_squared_error
 import xgboost as xgb
-from preprocessing import basic_clean, build_pipeline
+from ..preprocessing import basic_clean, build_pipeline
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "models", "xgboost"))
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 def train(raw_csv_path):
@@ -19,7 +19,7 @@ def train(raw_csv_path):
     preproc = build_pipeline()
     X = preproc.fit_transform(X_df)
 
-    # Save preprocessor
+    # Save preprocessor (optional: keep in xgboost folder, or shared location)
     joblib.dump(preproc, os.path.join(MODEL_DIR, "preprocessor.joblib"))
 
     # Split
@@ -60,8 +60,8 @@ def train(raw_csv_path):
     print("R2", r2_score(y_test, preds))
 
     # Save model
-    joblib.dump(model, os.path.join(MODEL_DIR, "model.joblib"))
-    print("Saved model to models/model.joblib")
+    joblib.dump(model, os.path.join(MODEL_DIR, "model_xg_r.joblib"))
+    print("Saved model to models/xgboost/model_xg_r.joblib")
 
 if __name__ == "__main__":
     import sys

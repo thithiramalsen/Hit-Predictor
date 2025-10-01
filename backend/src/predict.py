@@ -7,8 +7,8 @@ from preprocessing import load_pipeline, load_impute_values, prepare_dataframe_f
 from ocr_extract import extract_from_image
 from utils import parse_key, parse_mode, parse_explicit, parse_valence
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-MODEL_PATH = os.path.join(MODEL_DIR, "model.joblib")
+MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "xgboost"))
+MODEL_PATH = os.path.join(MODEL_DIR, "model_xg_r.joblib")
 
 FEATURES_0_1 = [
     "acousticness", "danceability", "energy", "instrumentalness",
