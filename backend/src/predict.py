@@ -69,39 +69,71 @@ def prompt_for_features(impute_values):
     return feat
 
 def review_and_edit_features(feat, impute_values):
-    print("\nExtracted features (edit or press Enter to keep):")
+    """
+    Unified prompt for both screenshot and manual input.
+    Shows field name, expected format, and current value.
+    """
+    print("\nExtracted features (edit value, see format hints, or press Enter to keep):")
     edited = {}
     for k in impute_values:
         val = feat.get(k, impute_values[k])
-        # Special handling for duration_min
-        if k == "duration_min":
-            mins = int(val)
-            secs = int(round((val - mins) * 60))
-            val_str = f"{mins}:{secs:02d}"
-            user_val = input(f"{k} [{val_str}]: ")
-            if user_val.strip() == "":
-                edited[k] = val
-            else:
-                try:
+        # Format hints
+        if k in ["danceability", "energy", "acousticness", "instrumentalness", "liveness", "speechiness"]:
+            prompt = f"{k} (0-100) [{val if val is not None else ''}]: "
+        elif k == "valence":
+            prompt = f"{k} / Happiness (0-100) [{val if val is not None else ''}]: "
+        elif k == "loudness":
+            prompt = f"{k} (dB) [{val if val is not None else ''}]: "
+        elif k == "tempo":
+            prompt = f"{k} (BPM) [{val if val is not None else ''}]: "
+        elif k == "duration_min":
+            # Show as mm:ss for user
+            mins = int(val) if val is not None else 0
+            secs = int(round((val - mins) * 60)) if val is not None else 0
+            prompt = f"{k} (mm:ss) [{mins}:{secs:02d}]: "
+        elif k == "key":
+            prompt = f"{k} (e.g., 'E Minor', 'G Major', or 0-11) [{val if val is not None else ''}]: "
+        elif k == "mode":
+            prompt = f"{k} (0=Minor, 1=Major) [{val if val is not None else ''}]: "
+        elif k == "explicit":
+            prompt = f"{k} (0=No, 1=Yes) [{val if val is not None else ''}]: "
+        elif k == "year":
+            prompt = f"{k} (e.g., 2022) [{val if val is not None else ''}]: "
+        else:
+            prompt = f"{k} [{val if val is not None else ''}]: "
+
+        user_val = input(prompt)
+        if user_val.strip() == "":
+            edited[k] = val
+        else:
+            # Parse and scale as needed
+            try:
+                if k in ["danceability", "energy", "acousticness", "instrumentalness", "liveness", "speechiness", "valence"]:
+                    v = float(user_val)
+                    edited[k] = v / 100.0 if v > 1 else v
+                elif k == "duration_min":
                     if ":" in user_val:
                         mm, ss = user_val.split(":")
                         edited[k] = float(mm) + float(ss)/60.0
                     else:
                         edited[k] = float(user_val)
-                except:
-                    edited[k] = val
-        else:
-            user_val = input(f"{k} [{val}]: ")
-            if user_val.strip() == "":
-                edited[k] = val
-            else:
-                try:
-                    if isinstance(impute_values[k], int):
+                elif k == "key":
+                    # Accept both note and int
+                    try:
                         edited[k] = int(user_val)
-                    else:
-                        edited[k] = float(user_val)
-                except:
-                    edited[k] = user_val
+                    except:
+                        edited[k] = parse_key(user_val)
+                elif k == "mode":
+                    edited[k] = int(user_val)
+                elif k == "explicit":
+                    edited[k] = parse_explicit(user_val)
+                elif k == "year":
+                    edited[k] = int(user_val)
+                else:
+                    edited[k] = float(user_val)
+            except Exception as e:
+                print(f"Invalid input for {k}, keeping previous value.")
+                edited[k] = val
     return edited
 
 def review_and_edit_features_debug(raw_feat, impute_values):

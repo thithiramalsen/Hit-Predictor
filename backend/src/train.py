@@ -25,6 +25,11 @@ def train(raw_csv_path):
     # Split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+    # After train_test_split
+    pd.DataFrame(X_test).to_csv("data/X_test.csv", index=False)
+    pd.DataFrame(y_test, columns=["popularity"]).to_csv("data/y_test.csv", index=False)
+
+
     # Convert to DMatrix
     dtrain = xgb.DMatrix(X_train, label=y_train)
     dtest = xgb.DMatrix(X_test, label=y_test)

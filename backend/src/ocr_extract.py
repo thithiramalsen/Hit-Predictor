@@ -22,21 +22,41 @@ def ocr_with_easyocr(image_path):
     return text
 
 def extract_features_from_text(text: str) -> dict:
+    print("RAW OCR TEXT:\n", text)  # Debug print
     text = text.lower()
     out = {}
-    # Extract key string (e.g., "key: e minor")
-    key_match = re.search(r"key[:\s]*([a-g][#b]?[\s]?(major|minor)?)", text)
+    # Improved key extraction (unchanged)
+    key_match = re.search(r"key[:;\s]*([a-g][#b]?)(?:\s*\/\s*[a-g][#b]?)?\s*(major|minor)?", text)
     if key_match:
-        out["key_str"] = key_match.group(1).strip()
-    # Extract explicit string (e.g., "explicit: yes")
-    explicit_match = re.search(r"explicit[:\s]*(yes|no)", text)
+        note = key_match.group(1).strip().upper()
+        scale = key_match.group(2).lower() if key_match.group(2) else ""
+        out["key_str"] = f"{note} {scale}".strip()
+    # Explicit, happiness, loudness (unchanged)
+    explicit_match = re.search(r"explicit[:;\s]*(yes|no)", text)
     if explicit_match:
         out["explicit_str"] = explicit_match.group(1).strip()
-    # Extract happiness/valence
-    happiness_match = re.search(r"happiness[:\s]*([0-9]+)", text)
+    happiness_match = re.search(r"happiness[:;\s]*([0-9]+)", text)
     if happiness_match:
         out["happiness"] = float(happiness_match.group(1))
-    # Existing float extraction logic...
+    loudness_match = re.search(r"loudness[:;\s]*([-+]?\d+\.?\d*)\s*d?b?", text)
+    if loudness_match:
+        out["loudness"] = float(loudness_match.group(1))
+    # --- Duration/Length handling ---
+    # 1. mm:ss (colon)
+    length_match_colon = re.search(r"(length|duration)[:;\s]*([0-9]+):([0-9]+)", text)
+    if length_match_colon:
+        mm, ss = length_match_colon.group(2), length_match_colon.group(3)
+        out["duration_min"] = float(mm) + float(ss)/60.0
+    else:
+        # 2. m.ss (dot, where .ss is seconds, NOT decimal)
+        length_match_dot = re.search(r"(length|duration)[:;\s]*([0-9]+)\.([0-9]{1,2})", text)
+        if length_match_dot:
+            mm, ss = length_match_dot.group(2), length_match_dot.group(3)
+            # treat .ss as seconds, not decimal
+            out["duration_min"] = float(mm) + float(ss)/60.0
+
+    # Remove any fallback that treats a single float as decimal minutes for duration/length!
+    # --- Rest of your float extraction logic (unchanged) ---
     float_pattern = r"([a-zA-Z %]+?)[:\s]*([-+]?\d*\.\d+|\d+[:\d]*)"
     matches = re.findall(float_pattern, text)
     for k, v in matches:
@@ -47,6 +67,10 @@ def extract_features_from_text(text: str) -> dict:
                 mm, ss = val.split(":")
                 val_num = float(mm) + float(ss)/60.0
                 out["duration_min"] = val_num
+                continue
+            # Only treat as decimal if not length/duration
+            if ("duration" in key or "length" in key):
+                # If it matches m.ss, already handled above, so skip
                 continue
             val_num = float(val)
         except:
@@ -71,7 +95,8 @@ def extract_features_from_text(text: str) -> dict:
             out["valence"] = val_num
         elif "tempo" in key:
             out["tempo"] = val_num
-        elif "duration" in key:
+        elif "duration" in key or "length" in key:
+            # Only treat as decimal if not already handled above
             if val_num > 1000:
                 out["duration_min"] = val_num / 60000.0
             elif val_num > 120:
