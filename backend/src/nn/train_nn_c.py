@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, classification_report
+from imblearn.over_sampling import SMOTE
 from tensorflow import keras
 from tensorflow.keras import layers, callbacks
 from ..preprocessing import basic_clean, build_pipeline
@@ -39,7 +40,7 @@ def train(raw_csv_path):
     # Example: convert into 3 classes [Low, Medium, High]
     bins = [0, 40, 70, 100]
     labels = ["Low", "Medium", "High"]
-    df["popularity_class"] = pd.cut(df["popularity"], bins=bins, labels=labels)
+    df["popularity_class"] = pd.cut(df["popularity"], bins=bins, labels=labels, include_lowest=True)
 
     y = df["popularity_class"].values
     X_df = df.drop(columns=["popularity", "popularity_class"])
@@ -57,6 +58,11 @@ def train(raw_csv_path):
     # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
+    # Apply SMOTE to the training data ONLY
+    print("Applying SMOTE to handle class imbalance...")
+    smote = SMOTE(random_state=42)
+    X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
+    print(f"Original training shape: {X_train.shape}, Resampled shape: {X_train_res.shape}")
     # Build model
     model = build_model(X_train.shape[1], num_classes=len(le.classes_))
 
@@ -69,7 +75,7 @@ def train(raw_csv_path):
 
     # Train
     history = model.fit(
-        X_train, y_train,
+        X_train_res, y_train_res,
         validation_split=0.2,
         epochs=100,
         batch_size=64,
@@ -81,11 +87,8 @@ def train(raw_csv_path):
     preds = np.argmax(model.predict(X_test), axis=1)
     print("Accuracy:", accuracy_score(y_test, preds))
     print(classification_report(y_test, preds, target_names=[str(c) for c in le.classes_]))
-
-    # Save final model
-    model_path = os.path.join(MODEL_DIR, "model_nn_c.keras")
-    print("Saving model to:", model_path)
-    model.save(model_path)
+    
+    print(f"Best model saved to: {checkpoint_path}")
 
 if __name__ == "__main__":
     import sys

@@ -16,4 +16,5 @@ fastapi
 uvicorn
 python-multipart
 tensorflow
+imbalanced-learn
 

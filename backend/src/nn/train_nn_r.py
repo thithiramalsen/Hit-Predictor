@@ -54,7 +54,7 @@ def train(raw_csv_path):
     # Callbacks = EarlyStopping + ModelCheckpoint
     checkpoint_path = os.path.join(MODEL_DIR, "best_model_nn_r.keras")
     cb = [
-        callbacks.EarlyStopping(patience=10, restore_best_weights=True),
+        callbacks.EarlyStopping(patience=20, restore_best_weights=True),
         callbacks.ModelCheckpoint(checkpoint_path, save_best_only=True)
     ]
 
@@ -74,10 +74,7 @@ def train(raw_csv_path):
     print("RMSE", np.sqrt(mean_squared_error(y_test, preds)))
     print("R2", r2_score(y_test, preds))
 
-    # Save final model
-    model_path = os.path.join(MODEL_DIR, "model_nn_r.keras")
-    print("Saving model to:", model_path)
-    model.save(model_path)
+    print(f"Best model saved to: {checkpoint_path}")
 
 if __name__ == "__main__":
     import sys
