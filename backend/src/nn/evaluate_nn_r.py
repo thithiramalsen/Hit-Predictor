@@ -26,11 +26,11 @@ def evaluate():
 
     # Metrics
     mae = mean_absolute_error(y, preds)
-    rmse = mean_squared_error(y, preds, squared=False)
+    rmse = mean_squared_error(y, preds)
     r2 = r2_score(y, preds)
-    print("Full-data MAE:", mae)
-    print("Full-data RMSE:", rmse)
-    print("Full-data R2:", r2)
+    print("MAE:", mae)
+    print("RMSE:", rmse)
+    print("R2:", r2)
 
     # Predicted vs actual plot
     plt.figure(figsize=(6,6))

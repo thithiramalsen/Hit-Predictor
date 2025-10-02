@@ -1,14 +1,19 @@
 import os
 import joblib
 import xgboost as xgb
-from preprocessing import prepare_dataframe_from_dict
+import numpy as np
+from tensorflow import keras
+from .preprocessing import prepare_dataframe_from_dict
+
 
 def discover_models(model_root="models"):
     """Recursively discover model files in all subfolders, skipping preprocessors."""
     models = {}
     for root, dirs, files in os.walk(model_root):
         for fname in files:
-            if fname.endswith(".joblib") and "preprocessor" not in fname:
+            if "preprocessor" in fname:
+                continue
+            if fname.endswith(".joblib"):
                 # Example: model_xg_r.joblib -> xgboost_regression
                 if "xg_r" in fname:
                     models["xgboost_regression"] = os.path.join(root, fname)
@@ -18,8 +23,12 @@ def discover_models(model_root="models"):
                     models["randomforest_regression"] = os.path.join(root, fname)
                 elif "rf_c" in fname:
                     models["randomforest_classification"] = os.path.join(root, fname)
-                # Add more mappings as needed
+            elif fname.endswith(".keras"):
+                # Neural network regression support
+                if "nn_r" in fname:
+                    models["neuralnet_regression"] = os.path.join(root, fname)
     return models
+
 
 def select_model(models):
     """Prompt user to select a model from discovered models."""
@@ -37,6 +46,7 @@ def select_model(models):
         print("Invalid selection. Exiting.")
         exit(1)
 
+
 def get_preprocessor_path(model_path):
     """Return the correct preprocessor path for a given model path."""
     preproc_dir = os.path.dirname(model_path)
@@ -49,30 +59,46 @@ def get_preprocessor_path(model_path):
         return os.path.join(preproc_dir, "preprocessor_rf_r.joblib")
     elif "rf_c" in fname:
         return os.path.join(preproc_dir, "preprocessor_rf_c.joblib")
+    elif "nn_r" in fname:
+        return os.path.join(preproc_dir, "preprocessor_nn_r.joblib")
     else:
         return os.path.join(preproc_dir, "preprocessor.joblib")
 
+
 def load_artifacts(model_path, impute_values_path=None):
     """Load model, matching preprocessor, and impute values."""
-    model = joblib.load(model_path)
+    if model_path.endswith(".joblib"):
+        model = joblib.load(model_path)
+    elif model_path.endswith(".keras"):
+        model = keras.models.load_model(model_path)
+    else:
+        raise ValueError("Unsupported model format")
+
     preproc_path = get_preprocessor_path(model_path)
     preproc = joblib.load(preproc_path)
+
     impute_values = None
     if impute_values_path:
         impute_values = joblib.load(impute_values_path)
+
     return model, preproc, impute_values
 
+
 def predict_from_features_dict(feat_dict, model_type, model_path):
+    """Run prediction given a feature dictionary, model type, and model path."""
     model, preproc, impute_values = load_artifacts(model_path)
     df = prepare_dataframe_from_dict(feat_dict, impute_values)
     X = preproc.transform(df)
+
     if "xgboost" in model_type and "regression" in model_type:
         dmatrix = xgb.DMatrix(X)
         return float(model.predict(dmatrix)[0])
+
     elif "xgboost" in model_type and "classification" in model_type:
         pred_prob = model.predict_proba(X)[0][1]
         pred_class = int(pred_prob >= 0.5)
         return {"class": pred_class, "probability": float(pred_prob)}
+
     elif "randomforest" in model_type:
         if "regression" in model_type:
             return float(model.predict(X)[0])
@@ -80,5 +106,10 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
             prob = model.predict_proba(X)[0][1]
             pred_class = int(prob >= 0.5)
             return {"class": pred_class, "probability": float(prob)}
+
+    elif "neuralnet" in model_type and "regression" in model_type:
+        preds = model.predict(X).flatten()
+        return float(preds[0])
+
     else:
         raise ValueError("Unknown model type or unsupported model.")
