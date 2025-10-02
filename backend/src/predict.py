@@ -245,7 +245,7 @@ def normalize_extracted_features(feat):
 
 if __name__ == "__main__":
     import sys
-    models = discover_models("models/xgboost")
+    models = discover_models("models")
     args = sys.argv[1:]
 
     selected_model = None
