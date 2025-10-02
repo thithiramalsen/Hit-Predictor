@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { UploadZone } from './Components/UploadZone';
 import { FeatureForm } from './Components/FeatureForm';
+import { NavBar } from './Components/NavBar';
 import { ModelDropdown } from './Components/ModelDropdown';
 import { PredictionResult } from './Components/PredictionResult';
 import { HistoryList } from './Components/HistoryList';
@@ -8,6 +9,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { api } from './services/api';
 import { KEY_OPTIONS } from './utils/constants'; // or define KEY_OPTIONS in this file
 //import './index.css';
+
 
 const parseKey = (keyStr) => {
   const map = {
@@ -28,8 +30,16 @@ const parseMode = (keyStr) => {
 function App() {
   const [features, setFeatures] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [uploadedImage, setUploadedImage] = useState(null);
   const [prediction, setPrediction] = useState(null);
   const [history, setHistory] = useLocalStorage('predictions', []);
+
+  const handleClear = () => {
+    setFeatures(null);
+    setSelectedModel(null);
+    setUploadedImage(null);
+    setPrediction(null);
+  };
 
   const normalizeFeatures = (features) => {
     const out = { ...features };
@@ -67,6 +77,7 @@ function App() {
       const normalized = normalizeFeatures(extractedFeatures);
       console.log("Normalized features for form:", normalized); // Debug
       setFeatures(normalized);
+      setUploadedImage(URL.createObjectURL(file));
     } catch (error) {
       console.error('Upload failed:', error);
     }
@@ -93,30 +104,37 @@ function App() {
   };
 
     return (
-    <div className="min-h-screen bg-spotify-black text-white p-4">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-4xl font-bold text-center mb-8">Hit Song Predictor</h1>
-        
+    <div className="min-h-screen bg-spotify-black text-white">
+      <NavBar />
+      <main className="max-w-4xl mx-auto p-4 space-y-8">
         {!features ? (
           <UploadZone onUpload={handleUpload} />
         ) : (
           <div className="space-y-6">
-            <FeatureForm features={features} onChange={setFeatures} />
+            <FeatureForm features={features} onChange={setFeatures} image={uploadedImage} />
             <ModelDropdown selected={selectedModel} onSelect={setSelectedModel} />
-            <button
-              className="px-4 py-2 rounded-full font-semibold transition-colors w-full bg-spotify-green hover:bg-opacity-80 text-black"
-              onClick={handlePredict}
-              disabled={!selectedModel}
-            >
-              Predict
-            </button>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                className="btn btn-secondary"
+                onClick={handleClear}
+              >
+                Start Over
+              </button>
+              <button
+                className="btn btn-primary shadow-lg shadow-spotify-green/20"
+                onClick={handlePredict}
+                disabled={!selectedModel}
+              >
+                Predict
+              </button>
+            </div>
           </div>
         )}
 
         {prediction && <PredictionResult prediction={prediction} />}
 
         <HistoryList predictions={history} />
-      </div>
+      </main>
     </div>
   );
 }

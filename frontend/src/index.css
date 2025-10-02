@@ -4,7 +4,7 @@
  
 @layer base {
   body {
-    @apply min-h-screen bg-spotify-black text-spotify-lightgray;
+    @apply min-h-screen bg-spotify-black text-spotify-lightgray font-sans;
   }
 }
 
@@ -23,5 +23,12 @@
 
   .btn-secondary {
     @apply bg-spotify-darkgray text-white hover:bg-opacity-80 border border-spotify-lightgray/50;
+  }
+
+  .slider-thumb::-webkit-slider-thumb {
+    @apply w-4 h-4 bg-white rounded-full appearance-none -mt-1 ring-2 ring-spotify-green;
+  }
+  .slider-thumb::-moz-range-thumb {
+    @apply w-4 h-4 bg-white rounded-full appearance-none ring-2 ring-spotify-green;
   }
 }

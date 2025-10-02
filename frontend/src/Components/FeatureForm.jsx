@@ -1,10 +1,11 @@
 import React from "react";
+import { SliderInput } from "./SliderInput";
 
 const KEY_OPTIONS = [
   "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
 ];
 
-export function FeatureForm({ features, onChange }) {
+export function FeatureForm({ features, onChange, image }) {
   console.log("FeatureForm received features:", features); // Debug
 
   const handleInputChange = (key, value) => {
@@ -16,23 +17,32 @@ export function FeatureForm({ features, onChange }) {
   const mins = Math.floor(durationMin);
   const secs = Math.round((durationMin - mins) * 60);
 
+  const sliderFields = new Set([
+    "happiness", "danceability", "energy", "acousticness",
+    "instrumentalness", "liveness", "speechiness"
+  ]);
+
   const allFields = [
-    "happiness", "loudness", "duration_min", "tempo", "danceability", "energy",
-    "acousticness", "instrumentalness", "liveness", "speechiness", "explicit", "key", "mode"
+    "danceability", "energy", "loudness", "tempo", "happiness",
+    "acousticness", "instrumentalness", "liveness", "speechiness",
+    "duration_min", "key", "mode", "explicit"
   ];
 
   return (
-    <div className="bg-spotify-darkgray rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="bg-spotify-darkgray rounded-lg p-6 space-y-6">
+      {image && (
+        <div className="flex justify-center">
+          <img src={image} alt="Uploaded Screenshot" className="max-h-96 rounded-lg" />
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {allFields.map((key) => {
-        const value = features[key] ?? "";
-        if (key === "key") {
-          console.log("Rendering key field with value:", value); // Debug
-        }
-        if (key === "mode") {
-          console.log("Rendering mode field with value:", value); // Debug
-        }
-        if (key === "loudness") {
-          console.log("Rendering loudness field with value:", value); // Debug
+        let value = features[key] ?? "";
+
+        if (sliderFields.has(key)) {
+          return (
+            <SliderInput key={key} label={key} value={value * 100} onChange={v => handleInputChange(key, v / 100)} />
+          );
         }
         if (key === "explicit") {
           return (
@@ -40,7 +50,7 @@ export function FeatureForm({ features, onChange }) {
               <label className="mb-1 text-spotify-green font-semibold capitalize">{key.replace(/_/g, " ")}</label>
               <select
                 className="input"
-                value={value}
+                value={String(value)}
                 onChange={e => handleInputChange(key, e.target.value)}
               >
                 <option value="0">No</option>
@@ -132,6 +142,7 @@ export function FeatureForm({ features, onChange }) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
