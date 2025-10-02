@@ -21,6 +21,10 @@
     @apply bg-spotify-green text-black hover:bg-opacity-80;
   }
 
+  .btn-lg {
+    @apply text-lg px-8 py-3;
+  }
+
   .btn-secondary {
     @apply bg-spotify-darkgray text-white hover:bg-opacity-80 border border-spotify-lightgray/50;
   }

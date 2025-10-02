@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { UploadZone } from './Components/UploadZone';
+import { ChoiceScreen } from './Components/ChoiceScreen';
+import { LandingPage } from './Components/LandingPage';
+import { AboutPage } from './Components/AboutPage';
+import { PrivacyPage } from './Components/PrivacyPage';
 import { FeatureForm } from './Components/FeatureForm';
 import { NavBar } from './Components/NavBar';
 import { ModelDropdown } from './Components/ModelDropdown';
@@ -32,6 +36,7 @@ function App() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
   const [prediction, setPrediction] = useState(null);
+  const [view, setView] = useState('landing'); // 'landing', 'choice', 'upload', 'form', 'about', 'privacy'
   const [history, setHistory] = useLocalStorage('predictions', []);
 
   const handleClear = () => {
@@ -39,6 +44,7 @@ function App() {
     setSelectedModel(null);
     setUploadedImage(null);
     setPrediction(null);
+    setView('landing');
   };
 
   const normalizeFeatures = (features) => {
@@ -77,6 +83,7 @@ function App() {
       const normalized = normalizeFeatures(extractedFeatures);
       console.log("Normalized features for form:", normalized); // Debug
       setFeatures(normalized);
+      setView('form');
       setUploadedImage(URL.createObjectURL(file));
     } catch (error) {
       console.error('Upload failed:', error);
@@ -105,31 +112,74 @@ function App() {
 
     return (
     <div className="min-h-screen bg-spotify-black text-white">
-      <NavBar />
+      <NavBar
+        onTitleClick={handleClear}
+        onAboutClick={() => setView('about')}
+        onPrivacyClick={() => setView('privacy')}
+      />
       <main className="max-w-4xl mx-auto p-4 space-y-8">
-        {!features ? (
-          <UploadZone onUpload={handleUpload} />
-        ) : (
-          <div className="space-y-6">
-            <FeatureForm features={features} onChange={setFeatures} image={uploadedImage} />
-            <ModelDropdown selected={selectedModel} onSelect={setSelectedModel} />
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                className="btn btn-secondary"
-                onClick={handleClear}
-              >
-                Start Over
-              </button>
-              <button
-                className="btn btn-primary shadow-lg shadow-spotify-green/20"
-                onClick={handlePredict}
-                disabled={!selectedModel}
-              >
-                Predict
-              </button>
-            </div>
+        {view === 'choice' && (
+          <div className="mb-4">
+            <button onClick={() => setView('landing')} className="btn btn-secondary">
+              &larr; Back to Home
+            </button>
           </div>
         )}
+        {(view === 'upload' || view === 'form' || view === 'about' || view === 'privacy') && (
+          <div className="mb-4">
+            <button onClick={() => setView(view === 'upload' || view === 'form' ? 'choice' : 'landing')} className="btn btn-secondary">
+              &larr; Back to Options
+            </button>
+          </div>
+        )}
+
+        {view === 'landing' && (
+          <LandingPage onGetStarted={() => setView('choice')} />
+        )}
+
+        {view === 'choice' && (
+          <ChoiceScreen
+            onUploadClick={() => setView('upload')}
+            onManualClick={() => {
+              const defaultFeatures = {
+                danceability: 0.5, energy: 0.5, loudness: -7, tempo: 120,
+                happiness: 0.5, acousticness: 0.1, instrumentalness: 0,
+                liveness: 0.1, speechiness: 0.05, duration_min: 3.5,
+                key: 0, mode: 1, explicit: "0"
+              };
+              setFeatures(defaultFeatures);
+              setView('form');
+            }}
+          />
+        )}
+
+        {view === 'upload' && <UploadZone onUpload={handleUpload} />}
+
+        {view === 'form' && features && (
+            <div className="space-y-6">
+              <FeatureForm features={features} onChange={setFeatures} image={uploadedImage} />
+              <ModelDropdown selected={selectedModel} onSelect={setSelectedModel} />
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleClear}
+                >
+                  Start Over
+                </button>
+                <button
+                  className="btn btn-primary shadow-lg shadow-spotify-green/20"
+                  onClick={handlePredict}
+                  disabled={!selectedModel}
+                >
+                  Predict
+                </button>
+              </div>
+            </div>
+        )}
+
+        {view === 'about' && <AboutPage />}
+
+        {view === 'privacy' && <PrivacyPage />}
 
         {prediction && <PredictionResult prediction={prediction} />}
 
