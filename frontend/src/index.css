@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* optional global resets if needed */
+body {
+  @apply min-h-screen;
+}

@@ -68,17 +68,31 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
     X = preproc.transform(df)
     if "xgboost" in model_type and "regression" in model_type:
         dmatrix = xgb.DMatrix(X)
-        return float(model.predict(dmatrix)[0])
+        pred = float(model.predict(dmatrix)[0])
+        return {"predicted_popularity": pred}  # <-- always return object
     elif "xgboost" in model_type and "classification" in model_type:
         pred_prob = model.predict_proba(X)[0][1]
         pred_class = int(pred_prob >= 0.5)
         return {"class": pred_class, "probability": float(pred_prob)}
     elif "randomforest" in model_type:
         if "regression" in model_type:
-            return float(model.predict(X)[0])
+            pred = float(model.predict(X)[0])
+            return {"predicted_popularity": pred}  # <-- always return object
         else:
             prob = model.predict_proba(X)[0][1]
             pred_class = int(prob >= 0.5)
             return {"class": pred_class, "probability": float(prob)}
     else:
         raise ValueError("Unknown model type or unsupported model.")
+
+def get_available_models():
+    """
+    Returns a list of available models for the API.
+    Each model should be a dict with 'id' and 'label'.
+    """
+    models = discover_models("models")
+    # Convert to list of dicts for frontend
+    return [
+        {"id": key, "label": key.replace("_", " ").title()}
+        for key in models.keys()
+    ]

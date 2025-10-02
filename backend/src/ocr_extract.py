@@ -25,11 +25,11 @@ def extract_features_from_text(text: str) -> dict:
     print("RAW OCR TEXT:\n", text)  # Debug print
     text = text.lower()
     out = {}
-    # Improved key extraction (unchanged)
-    key_match = re.search(r"key[:;\s]*([a-g][#b]?)(?:\s*\/\s*[a-g][#b]?)?\s*(major|minor)?", text)
+    # Improved key extraction: match "F# Major", "Gb Major", "F#IGb Major", etc.
+    key_match = re.search(r"\b([a-g][#b]?)\w*\s*(major|minor)\b", text)
     if key_match:
         note = key_match.group(1).strip().upper()
-        scale = key_match.group(2).lower() if key_match.group(2) else ""
+        scale = key_match.group(2).lower()
         out["key_str"] = f"{note} {scale}".strip()
     # Explicit, happiness, loudness (unchanged)
     explicit_match = re.search(r"explicit[:;\s]*(yes|no)", text)
@@ -132,6 +132,12 @@ def extract_from_image(image_path_or_pil):
             pass
     features = extract_features_from_text(text)
     return features
+
+def extract_features_from_image(image_path):
+    """
+    Wrapper for API to extract features from an image file path.
+    """
+    return extract_from_image(image_path)
 
 if __name__ == "__main__":
     import sys
