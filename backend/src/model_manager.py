@@ -1,7 +1,7 @@
 import os
 import joblib
 import xgboost as xgb
-from preprocessing import prepare_dataframe_from_dict
+from .preprocessing import prepare_dataframe_from_dict
 
 def discover_models(model_root="models"):
     """Recursively discover model files in all subfolders, skipping preprocessors."""

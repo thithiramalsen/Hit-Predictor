@@ -5,7 +5,7 @@ import pytesseract
 import easyocr
 import numpy as np
 import os
-from utils import enhance_image_for_ocr
+from .utils import enhance_image_for_ocr
 
 USE_EASYOCR = True
 
