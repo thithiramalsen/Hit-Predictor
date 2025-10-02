@@ -5,6 +5,8 @@ import numpy as np
 from tensorflow import keras
 from .preprocessing import prepare_dataframe_from_dict
 
+import pandas as pd
+from .preprocessing import prepare_dataframe_from_dict
 
 def discover_models(model_root="models"):
     """Recursively discover model files in all subfolders, skipping preprocessors."""
@@ -82,7 +84,7 @@ def load_artifacts(model_path, impute_values_path=None):
     preproc = joblib.load(preproc_path)
 
     impute_values = None
-    if impute_values_path:
+    if impute_values_path and os.path.exists(impute_values_path):
         impute_values = joblib.load(impute_values_path)
 
     return model, preproc, impute_values
