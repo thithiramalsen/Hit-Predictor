@@ -13,10 +13,14 @@ def discover_models(model_root="models"):
     models = {}
     for root, dirs, files in os.walk(model_root):
         for fname in files:
+            # Debug: Log every file found
+            print(f"[discover_models] Found file: {fname} in {root}")
             if "preprocessor" in fname:
                 continue
             if fname.endswith(".joblib"):
                 # Example: model_xg_r.joblib -> xgboost_regression
+                model_id = None
+                model_path = os.path.join(root, fname)
                 if "xg_r" in fname:
                     models["xgboost_regression"] = os.path.join(root, fname)
                 elif "xg_c" in fname:
@@ -25,6 +29,11 @@ def discover_models(model_root="models"):
                     models["randomforest_regression"] = os.path.join(root, fname)
                 elif "rf_c" in fname:
                     models["randomforest_classification"] = os.path.join(root, fname)
+                # --- FIX: Add discovery for Linear Regression ---
+                elif "lr_r" in fname:
+                    models["linear_regression"] = os.path.join(root, fname)
+                elif "lr_c" in fname:
+                    models["linear_classification"] = os.path.join(root, fname)
             elif fname.endswith(".keras"):
                 # Neural network regression support
                 if "nn_r" in fname:
@@ -65,6 +74,8 @@ def get_preprocessor_path(model_path):
         return os.path.join(preproc_dir, "preprocessor_rf_c.joblib")
     elif "nn_r" in fname:
         return os.path.join(preproc_dir, "preprocessor_nn_r.joblib")
+    elif "lr_r" in fname:
+        return os.path.join(preproc_dir, "preprocessor_lr_r.joblib")
     elif "nn_c" in fname:
         return os.path.join(preproc_dir, "preprocessor_nn_c.joblib")
     else:
@@ -118,6 +129,12 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
             pred_class = int(prob >= 0.5)
             return {"class": pred_class, "probability": float(prob)}
 
+    # Linear Regression
+    elif "linear_regression" in model_type:
+        # Standard scikit-learn regression model
+        pred = float(model.predict(X)[0])
+        return {"predicted_popularity": pred}
+
     # Neural Network
     elif "neuralnet" in model_type and "regression" in model_type:
         preds = model.predict(X).flatten()
@@ -144,6 +161,8 @@ def get_available_models():
     Each model should be a dict with 'id' and 'label'.
     """
     models = discover_models("models")
+    # Debug: Log the models that will be sent to the frontend
+    print(f"[get_available_models] Discovered models: {list(models.keys())}")
     # Convert to list of dicts for frontend
     return [
         {"id": key, "label": key.replace("_", " ").title()}

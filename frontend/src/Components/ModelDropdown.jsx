@@ -7,8 +7,15 @@ export function ModelDropdown({ selected, onSelect }) {
 
   useEffect(() => {
     api.getModels()
-      .then(setModels)
-      .catch(() => setModels([]))
+      .then(models => {
+        // Debug: Log the models received from the API
+        console.log("Models received from API:", models);
+        setModels(models);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch models:", error);
+        setModels([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 

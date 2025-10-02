@@ -3,47 +3,41 @@ import joblib
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import numpy as np
 import os
+from ..preprocessing import basic_clean
 
-def evaluate(csv_path, model_path="models/linear_regression/model_lr.joblib"):
+# Define paths consistently with the training script
+MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models", "linear_regression"))
+MODEL_PATH = os.path.join(MODEL_DIR, "model_lr_r.joblib")
+PREPROC_PATH = os.path.join(MODEL_DIR, "preprocessor_lr_r.joblib")
+
+def evaluate(csv_path):
     df = pd.read_csv(csv_path)
-    target_col = 'popularity'  # replace with your target column
+    # Use the shared cleaning function
+    df = basic_clean(df)
 
-    # Compute duration_min and duration_sec from duration_ms if not present
-    if 'duration_ms' in df.columns:
-        df['duration_min'] = df['duration_ms'] // 60000
-        df['duration_sec'] = (df['duration_ms'] % 60000) / 1000
-    else:
-        df['duration_min'] = 0
-        df['duration_sec'] = 0
+    X_df = df.drop(columns=['popularity'])
+    y = df['popularity']
 
-    # Features to use
-    feature_cols = [
-        'danceability', 'energy', 'acousticness', 'instrumentalness',
-        'liveness', 'speechiness', 'loudness', 'tempo',
-        'duration_min', 'duration_sec', 'valence', 'explicit', 'mode', 'key'
-    ]
-
-    # Keep only columns that exist in the CSV
-    feature_cols = [col for col in feature_cols if col in df.columns]
-
-    X = df[feature_cols]
-    y = df[target_col]
-
-    if not os.path.exists(model_path):
-        print(f"Model not found at {model_path}")
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(PREPROC_PATH):
+        print(f"Model or preprocessor not found. Searched in: {MODEL_DIR}")
         return
 
-    model = joblib.load(model_path)
+    # Load the separate model and preprocessor files
+    model = joblib.load(MODEL_PATH)
+    preproc = joblib.load(PREPROC_PATH)
+
+    # Transform data using the loaded preprocessor
+    X = preproc.transform(X_df)
     preds = model.predict(X)
 
     r2 = r2_score(y, preds)
     rmse = np.sqrt(mean_squared_error(y, preds))
     mae = mean_absolute_error(y, preds)
 
+    print("\n--- Linear Regression Evaluation (Full Dataset) ---")
     print(f"R² Score: {r2:.4f}")
     print(f"RMSE: {rmse:.4f}")
     print(f"MAE: {mae:.4f}")
-
 
 if __name__ == "__main__":
     import sys

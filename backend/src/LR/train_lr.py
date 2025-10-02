@@ -2,73 +2,55 @@ import pandas as pd
 import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import numpy as np
 import os
+from ..preprocessing import basic_clean, build_pipeline
+
+# Define model directory
+MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models", "linear_regression"))
+os.makedirs(MODEL_DIR, exist_ok=True)
 
 def train(csv_path):
     df = pd.read_csv(csv_path)
+    # Use the shared basic_clean function
+    df = basic_clean(df)
 
-    target_col = 'popularity'  # replace with your target column
+    # Define features (X) and target (y)
+    y = df["popularity"].values
+    X_df = df.drop(columns=["popularity"])
 
-    # Compute duration_min and duration_sec from duration_ms if not present
-    if 'duration_ms' in df.columns:
-        df['duration_min'] = df['duration_ms'] // 60000
-        df['duration_sec'] = (df['duration_ms'] % 60000) / 1000
-    else:
-        df['duration_min'] = 0
-        df['duration_sec'] = 0
+    # Use the shared preprocessing pipeline
+    preproc = build_pipeline()
+    X = preproc.fit_transform(X_df)
 
-    # Features to use
-    feature_cols = [
-        'danceability', 'energy', 'acousticness', 'instrumentalness',
-        'liveness', 'speechiness', 'loudness', 'tempo',
-        'duration_min', 'duration_sec', 'valence', 'explicit', 'mode', 'key'
-    ]
-
-    # Drop missing columns if they do not exist in CSV
-    feature_cols = [col for col in feature_cols if col in df.columns]
-
-    X = df[feature_cols]
-    y = df[target_col]
-
-    # Identify numeric and categorical columns
-    numeric_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    categorical_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
-
-    # Preprocessing
-    preprocessor = ColumnTransformer(transformers=[
-        ('num', StandardScaler(), numeric_cols),
-        ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_cols)
-    ])
-
-    pipeline = Pipeline([
-        ('preprocessor', preprocessor),
-        ('lr', LinearRegression())
-    ])
-
+    # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    pipeline.fit(X_train, y_train)
-    preds = pipeline.predict(X_test)
+
+    # Define and train the model
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    # Make predictions for evaluation
+    preds = model.predict(X_test)
 
     # Metrics
     r2 = r2_score(y_test, preds)
     rmse = np.sqrt(mean_squared_error(y_test, preds))
     mae = mean_absolute_error(y_test, preds)
 
-    print(f"R² Score: {r2:.4f}")
-    print(f"RMSE: {rmse:.4f}")
-    print(f"MAE: {mae:.4f}")
+    print("\n--- Linear Regression Evaluation ---")
+    print(f"R² Score : {r2:.4f}")
+    print(f"RMSE     : {rmse:.4f}")
+    print(f"MAE      : {mae:.4f}")
 
-    # Save model
-    model_dir = "models/linear_regression"
-    os.makedirs(model_dir, exist_ok=True)
-    model_path = os.path.join(model_dir, "model_lr.joblib")
-    joblib.dump(pipeline, model_path)
-    print(f"Linear Regression model saved at: {model_path}")
+    # Save model and preprocessor separately, following the project's convention
+    model_path = os.path.join(MODEL_DIR, "model_lr_r.joblib")
+    preproc_path = os.path.join(MODEL_DIR, "preprocessor_lr_r.joblib")
+    joblib.dump(model, model_path)
+    joblib.dump(preproc, preproc_path)
+    print(f"\n✅ Linear Regression model saved to: {model_path}")
+    print(f"✅ Preprocessor saved to: {preproc_path}")
 
 
 if __name__ == "__main__":
