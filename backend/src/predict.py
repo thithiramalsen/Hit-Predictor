@@ -2,10 +2,10 @@
 import os
 import joblib
 import xgboost as xgb
-from preprocessing import load_pipeline, load_impute_values, prepare_dataframe_from_dict
-from ocr_extract import extract_from_image
-from utils import parse_key, parse_mode, parse_explicit, parse_valence
-from model_manager import discover_models, select_model, load_artifacts, predict_from_features_dict
+from .preprocessing import load_pipeline, load_impute_values, prepare_dataframe_from_dict
+from .ocr_extract import extract_from_image
+from .utils import parse_key, parse_mode, parse_explicit, parse_valence 
+from .model_manager import discover_models, select_model, load_artifacts, predict_from_features_dict
 
 FEATURES_0_1 = [
     "acousticness", "danceability", "energy", "instrumentalness",
@@ -245,7 +245,7 @@ def normalize_extracted_features(feat):
 
 if __name__ == "__main__":
     import sys
-    models = discover_models("models/xgboost")
+    models = discover_models("models")
     args = sys.argv[1:]
 
     selected_model = None

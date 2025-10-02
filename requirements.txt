@@ -15,4 +15,5 @@ tqdm
 fastapi
 uvicorn
 python-multipart
+tensorflow
 
