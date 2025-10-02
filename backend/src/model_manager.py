@@ -119,13 +119,19 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
     # Neural Network
     elif "neuralnet" in model_type and "regression" in model_type:
         preds = model.predict(X).flatten()
-        return float(preds[0])
+        return {"predicted_popularity": float(preds[0])}
 
     elif "neuralnet" in model_type and "classification" in model_type:
         preds_proba = model.predict(X)[0]  # shape: (num_classes,)
-        pred_class = int(np.argmax(preds_proba))
+        pred_class_idx = int(np.argmax(preds_proba))
         pred_prob = float(np.max(preds_proba))
-        return {"class": pred_class, "probability": pred_prob}
+        # Load the label encoder to get the string label
+        le_path = os.path.join(os.path.dirname(model_path), "label_encoder.joblib")
+        if os.path.exists(le_path):
+            le = joblib.load(le_path)
+            pred_class_label = le.inverse_transform([pred_class_idx])[0]
+            return {"class": pred_class_label, "probability": pred_prob}
+        return {"class": pred_class_idx, "probability": pred_prob}
 
     else:
         raise ValueError("Unknown model type or unsupported model.")
