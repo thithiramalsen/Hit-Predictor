@@ -27,6 +27,8 @@ def discover_models(model_root="models"):
                 # Neural network regression support
                 if "nn_r" in fname:
                     models["neuralnet_regression"] = os.path.join(root, fname)
+                elif "nn_c" in fname:
+                    models["neuralnet_classification"] = os.path.join(root, fname)
     return models
 
 
@@ -61,6 +63,8 @@ def get_preprocessor_path(model_path):
         return os.path.join(preproc_dir, "preprocessor_rf_c.joblib")
     elif "nn_r" in fname:
         return os.path.join(preproc_dir, "preprocessor_nn_r.joblib")
+    elif "nn_c" in fname:
+        return os.path.join(preproc_dir, "preprocessor_nn_c.joblib")
     else:
         return os.path.join(preproc_dir, "preprocessor.joblib")
 
@@ -90,6 +94,7 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
     df = prepare_dataframe_from_dict(feat_dict, impute_values)
     X = preproc.transform(df)
 
+    # XGBoost
     if "xgboost" in model_type and "regression" in model_type:
         dmatrix = xgb.DMatrix(X)
         return float(model.predict(dmatrix)[0])
@@ -99,6 +104,7 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
         pred_class = int(pred_prob >= 0.5)
         return {"class": pred_class, "probability": float(pred_prob)}
 
+    # Random Forest
     elif "randomforest" in model_type:
         if "regression" in model_type:
             return float(model.predict(X)[0])
@@ -107,9 +113,16 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
             pred_class = int(prob >= 0.5)
             return {"class": pred_class, "probability": float(prob)}
 
+    # Neural Network
     elif "neuralnet" in model_type and "regression" in model_type:
         preds = model.predict(X).flatten()
         return float(preds[0])
+
+    elif "neuralnet" in model_type and "classification" in model_type:
+        preds_proba = model.predict(X)[0]  # shape: (num_classes,)
+        pred_class = int(np.argmax(preds_proba))
+        pred_prob = float(np.max(preds_proba))
+        return {"class": pred_class, "probability": pred_prob}
 
     else:
         raise ValueError("Unknown model type or unsupported model.")
