@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { UploadZone } from './Components/UploadZone';
 import { ChoiceScreen } from './Components/ChoiceScreen';
 import { LandingPage } from './Components/LandingPage';
-import { AboutPage } from './Components/AboutPage';
-import { PrivacyPage } from './Components/PrivacyPage';
+import { AboutPage } from './Components/AboutPage'; 
+import { PrivacyPage } from './Components/PrivacyPage'; 
 import { FeatureForm } from './Components/FeatureForm';
 import { NavBar } from './Components/NavBar';
 import { ModelDropdown } from './Components/ModelDropdown';
@@ -37,6 +37,7 @@ function App() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [prediction, setPrediction] = useState(null);
   const [view, setView] = useState('landing'); // 'landing', 'choice', 'upload', 'form', 'about', 'privacy'
+  const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useLocalStorage('predictions', []);
 
   const handleClear = () => {
@@ -77,6 +78,7 @@ function App() {
   };
 
   const handleUpload = async (file) => {
+    setIsLoading(true);
     try {
       const extractedFeatures = await api.uploadImage(file);
       console.log("Raw features from backend OCR:", extractedFeatures); // Debug
@@ -87,10 +89,14 @@ function App() {
       setUploadedImage(URL.createObjectURL(file));
     } catch (error) {
       console.error('Upload failed:', error);
+      // Add user feedback for error
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handlePredict = async () => {
+    setIsLoading(true);
     if (!selectedModel || !features) return;
 
     // Always normalize before prediction
@@ -107,6 +113,8 @@ function App() {
       }, ...prev.slice(0, 4)]);
     } catch (error) {
       console.error('Prediction failed:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -127,7 +135,7 @@ function App() {
         )}
         {(view === 'upload' || view === 'form' || view === 'about' || view === 'privacy') && (
           <div className="mb-4">
-            <button onClick={() => setView(view === 'upload' || view === 'form' ? 'choice' : 'landing')} className="btn btn-secondary">
+            <button onClick={() => setView(['upload', 'form'].includes(view) ? 'choice' : 'landing')} className="btn btn-secondary">
               &larr; Back to Options
             </button>
           </div>
@@ -153,7 +161,7 @@ function App() {
           />
         )}
 
-        {view === 'upload' && <UploadZone onUpload={handleUpload} />}
+        {view === 'upload' && <UploadZone onUpload={handleUpload} loading={isLoading} />}
 
         {view === 'form' && features && (
             <div className="space-y-6">
@@ -169,7 +177,7 @@ function App() {
                 <button
                   className="btn btn-primary shadow-lg shadow-spotify-green/20"
                   onClick={handlePredict}
-                  disabled={!selectedModel}
+                disabled={!selectedModel || isLoading}
                 >
                   Predict
                 </button>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpTrayIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { ArrowUpTrayIcon, PencilSquareIcon, LinkIcon } from '@heroicons/react/24/outline';
 
 export function ChoiceScreen({ onUploadClick, onManualClick }) {
   return (

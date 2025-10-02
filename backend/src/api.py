@@ -6,7 +6,8 @@ from .model_manager import get_available_models
 from .ocr_extract import extract_features_from_image
 from .utils import parse_key, parse_mode
 import shutil
-import tempfile
+import tempfile 
+import requests
 import os
 import json  # <-- add this
 
