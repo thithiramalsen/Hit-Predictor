@@ -124,8 +124,9 @@ function App() {
         onTitleClick={handleClear}
         onAboutClick={() => setView('about')}
         onPrivacyClick={() => setView('privacy')}
+        onContactClick={() => setView('privacy')}
       />
-      <main className="max-w-4xl mx-auto p-4 space-y-8">
+      <main className={`mx-auto p-4 space-y-8 ${view === 'landing' ? 'max-w-7xl' : 'max-w-4xl'}`}>
         {view === 'choice' && (
           <div className="mb-4">
             <button onClick={() => setView('landing')} className="btn btn-secondary">
@@ -189,7 +190,7 @@ function App() {
 
         {view === 'privacy' && <PrivacyPage />}
 
-        {prediction && <PredictionResult prediction={prediction} />}
+        {prediction && view === 'form' && <PredictionResult prediction={prediction} />}
 
         <HistoryList predictions={history} />
       </main>
