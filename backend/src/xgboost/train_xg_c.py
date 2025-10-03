@@ -46,7 +46,7 @@ clf = xgb.XGBClassifier(
     n_estimators=200,
     learning_rate=0.1,
     max_depth=6,
-    scale_pos_weight=scale_pos_weight  # <-- key fix
+    scale_pos_weight=scale_pos_weight  # <-- negative class samples to positive class samples - focus more onminority
 )
 clf.fit(X_train_preproc, y_train)
 
