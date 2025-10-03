@@ -2,10 +2,10 @@
 import os
 import joblib
 import xgboost as xgb
-from preprocessing import load_pipeline, load_impute_values, prepare_dataframe_from_dict
-from ocr_extract import extract_from_image
-from utils import parse_key, parse_mode, parse_explicit, parse_valence
-from model_manager import discover_models, select_model, load_artifacts, predict_from_features_dict
+from .preprocessing import load_pipeline, load_impute_values, prepare_dataframe_from_dict
+from .ocr_extract import extract_from_image
+from .utils import parse_key, parse_mode, parse_explicit, parse_valence 
+from .model_manager import discover_models, select_model, load_artifacts, predict_from_features_dict
 
 FEATURES_0_1 = [
     "acousticness", "danceability", "energy", "instrumentalness",
@@ -245,7 +245,7 @@ def normalize_extracted_features(feat):
 
 if __name__ == "__main__":
     import sys
-    models = discover_models("models/xgboost")
+    models = discover_models("models")
     args = sys.argv[1:]
 
     selected_model = None
@@ -272,7 +272,7 @@ if __name__ == "__main__":
         result = predict_from_features_dict(feat, model_type, model_path)
         print("Manual input features:", feat)
         if model_type and "regression" in model_type:
-            print(f"Predicted popularity: {result:.3f}")
+            print(f"Predicted popularity: {result['predicted_popularity']:.3f}")
         else:
             print(f"Predicted class: {'Hit' if result['class'] else 'Non-Hit'} (probability: {result['probability']:.2f})")
     elif len(args) == 1 and args[0].lower().endswith((".png", ".jpg", ".jpeg")):
@@ -288,6 +288,6 @@ if __name__ == "__main__":
         result = predict_from_features_dict(feat, model_type, model_path)
         print("Final features used for prediction:", feat)
         if model_type and "regression" in model_type:
-            print(f"Predicted popularity: {result:.3f}")
+            print(f"Predicted popularity: {result['predicted_popularity']:.3f}")
         else:
             print(f"Predicted class: {'Hit' if result['class'] else 'Non-Hit'} (probability: {result['probability']:.2f}")

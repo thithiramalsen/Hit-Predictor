@@ -11,3 +11,10 @@ pytesseract
 opencv-python
 easyocr
 tqdm
+
+fastapi
+uvicorn
+python-multipart
+tensorflow
+imbalanced-learn
+

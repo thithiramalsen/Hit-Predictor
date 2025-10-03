@@ -25,8 +25,9 @@ def enhance_image_for_ocr(pil_img: Image.Image) -> Image.Image:
 
 def parse_key(key_str):
     # Example: "E Minor", "C#/Db Minor", "G Major"
-    for note in KEY_MAP:
-        if note in key_str:
+    # Sort keys by length descending to match "F#" before "F"
+    for note in sorted(KEY_MAP.keys(), key=len, reverse=True):
+        if note in key_str.upper():
             return KEY_MAP[note]
     return None
 
