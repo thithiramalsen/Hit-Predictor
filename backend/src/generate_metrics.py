@@ -6,10 +6,10 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from model_manager import discover_models, get_preprocessor_path
 
 # Define paths relative to the script location
-BACKEND_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "data"))
-MODELS_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "models"))
-FRONTEND_PUBLIC_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "..", "frontend", "public"))
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DATA_DIR = os.path.join(BACKEND_DIR, "data")
+MODELS_DIR = os.path.join(BACKEND_DIR, "models")
+FRONTEND_PUBLIC_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "frontend", "public"))
 
 X_TEST_PATH = os.path.join(DATA_DIR, "X_test_cls.csv")
 Y_TEST_PATH = os.path.join(DATA_DIR, "y_test_cls.csv")

@@ -4,10 +4,10 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import xgboost as xgb
-from ..preprocessing import build_pipeline
+from ..preprocessing import build_pipeline, basic_clean
 
 # Paths
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "Spotify_clean.csv")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "Spotify.csv") # Use raw data
 DATA_PATH = os.path.abspath(DATA_PATH)
 BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 MODEL_PATH = os.path.join(BACKEND_DIR, "models", "xgboost", "model_xg_c.joblib")
@@ -17,9 +17,10 @@ Y_TEST_PATH = os.path.join("..", "..", "data", "y_test_cls.csv")
 
 # Load dataset
 df = pd.read_csv(DATA_PATH)
+df = basic_clean(df) # Clean the raw data
 
 # Features and labels
-X = df.drop(columns=["popularity", "year"])
+X = df.drop(columns=["popularity", "year"], errors="ignore")
 y = (df["popularity"] >= 70).astype(int)
 
 # Split
