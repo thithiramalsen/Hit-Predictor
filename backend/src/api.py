@@ -11,6 +11,7 @@ import requests
 import os
 import json
 import uvicorn  # <-- Added for direct execution
+import asyncio
 
 
 app = FastAPI(title="Hit Predictor API")
@@ -49,9 +50,15 @@ app.add_middleware(
 )
 
 @app.on_event("startup")
-def startup_event():
-    """Load all models into memory when the application starts."""
-    load_all_models_into_cache()
+async def startup_event():
+    """Kick off model loading in the background to avoid blocking port binding on Render."""
+    try:
+        # Run the expensive model cache warm-up in a background thread.
+        asyncio.create_task(asyncio.to_thread(load_all_models_into_cache))
+        print("[Startup] Triggered background model cache initialization.")
+    except Exception as e:
+        # Don't fail startup if background warm-up can't be scheduled.
+        print(f"[Startup] Warning: failed to schedule model cache init: {e}")
 
 def normalize_features(feat):
     out = feat.copy()
@@ -147,4 +154,5 @@ if __name__ == "__main__":
     # Get port from environment variable or default to 5000
     port = int(os.environ.get("PORT", 5000))
     # Start the server with the correct host and port
-    uvicorn.run("src.api:app", host="0.0.0.0", port=port)
+    print(f"[Server] Starting Uvicorn on 0.0.0.0:{port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
