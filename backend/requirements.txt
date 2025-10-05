@@ -15,6 +15,5 @@ tqdm
 fastapi
 uvicorn
 python-multipart
-tensorflow
+tensorflow-cpu
 imbalanced-learn
-

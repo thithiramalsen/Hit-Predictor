@@ -11,12 +11,20 @@ import requests
 import os
 import json  # <-- add this
 
+
 app = FastAPI(title="Hit Predictor API")
+
+# Get the frontend URL from environment variables, with a default for local dev
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # 5173 is Vite's default
+
+origins = [
+    FRONTEND_URL,
+]
 
 # Enable CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # during dev, open for all
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
