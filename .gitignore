@@ -1,2 +1,7 @@
+# Python
 venv/
 model_rf_r.joblib
+
+# Frontend
+frontend/node_modules
+frontend/.env.local
