@@ -46,15 +46,6 @@ def list_models():
     models = get_available_models()
     return {"models": models}
 
-@app.get("/evaluation_metrics")
-def get_metrics():
-    """
-    Generates and returns evaluation metrics for classification models.
-    """
-    from .generate_metrics import generate_all_metrics
-    metrics = generate_all_metrics()
-    return metrics
-
 @app.post("/ocr")
 async def ocr(file: UploadFile = File(...)):
     tmpdir = tempfile.mkdtemp()

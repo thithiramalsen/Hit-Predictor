@@ -14,6 +14,7 @@ FRONTEND_PUBLIC_DIR = os.path.join(PROJECT_ROOT, "frontend", "public")
 
 X_TEST_PATH = os.path.join(DATA_DIR, "X_test_cls.csv")
 Y_TEST_PATH = os.path.join(DATA_DIR, "y_test_cls.csv")
+OUTPUT_PATH = os.path.join(FRONTEND_PUBLIC_DIR, "evaluation_metrics.json")
 
 def evaluate_model(model_id, model_path):
     """

@@ -36,7 +36,7 @@ export const api = {
   },
 
   getEvaluationMetrics: async () => {
-    const response = await axios.get(`${API_URL}/evaluation_metrics`);
+    const response = await axios.get('/evaluation_metrics.json');
     return response.data;
   }
 };
