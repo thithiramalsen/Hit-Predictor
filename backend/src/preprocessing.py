@@ -98,7 +98,7 @@ def prepare_dataframe_from_dict(feat_dict, impute_values=None):
     import pandas as pd
     # Use impute_values as defaults, update with feat_dict
     if impute_values is None:
-        impute_values = load_impute_values()
+        impute_values = load_impute_values() # This provides the column structure
     data = impute_values.copy()
     data.update(feat_dict)
     df = pd.DataFrame([data])

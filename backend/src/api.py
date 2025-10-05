@@ -1,7 +1,7 @@
 # api.py
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from .predict import predict_from_features_dict
+from .model_manager import predict_from_features_dict, load_all_models_into_cache
 from .model_manager import get_available_models
 from .ocr_extract import extract_features_from_image
 from .utils import parse_key, parse_mode
@@ -29,6 +29,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+def startup_event():
+    """Load all models into memory when the application starts."""
+    load_all_models_into_cache()
 
 def normalize_features(feat):
     out = feat.copy()
@@ -82,15 +87,7 @@ async def predict(model_id: str = Form(...), features: str = Form(...)):
     features_dict = normalize_features(features_dict)
     print(f"[API] Normalized features_dict: {features_dict}")
 
-    # Discover models and get model_path
-    models = {}
-    try:
-        from .model_manager import discover_models
-        models = discover_models("models")
-    except Exception as e:
-        print("Failed to discover models:", e)
-        raise
-
+    models = load_all_models_into_cache()
     model_path = models.get(model_id)
     if not model_path:
         print(f"Model id '{model_id}' not found in discovered models: {list(models.keys())}")
@@ -98,7 +95,7 @@ async def predict(model_id: str = Form(...), features: str = Form(...)):
 
     print(f"[API] Using model_path: {model_path}")
 
-    result = predict_from_features_dict(features_dict, model_id, model_path)
+    result = predict_from_features_dict(features_dict, model_id, model_path) # model_path is not used now but keeping for signature
     print(f"[API] Prediction result: {result}")
 
     # If regression, print popularity score directly for clarity

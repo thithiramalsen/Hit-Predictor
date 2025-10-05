@@ -6,7 +6,10 @@ from tensorflow import keras
 from .preprocessing import prepare_dataframe_from_dict
 
 import pandas as pd
+from functools import lru_cache
 from .preprocessing import prepare_dataframe_from_dict
+
+MODEL_CACHE = {}
 
 def discover_models(model_root="models"):
     """Recursively discover model files in all subfolders, skipping preprocessors."""
@@ -101,10 +104,33 @@ def load_artifacts(model_path, impute_values_path=None):
     return model, preproc, impute_values
 
 
+@lru_cache(maxsize=1)
+def load_all_models_into_cache(model_root="models"):
+    """
+    Discovers all models and pre-loads them into a cache dictionary.
+    This should be called once at application startup.
+    """
+    if MODEL_CACHE:
+        return MODEL_CACHE
+
+    print("[Cache] Initializing model cache...")
+    discovered_paths = discover_models(model_root)
+    for model_id, model_path in discovered_paths.items():
+        print(f"[Cache] Loading model: {model_id}")
+        model, preproc, _ = load_artifacts(model_path)
+        MODEL_CACHE[model_id] = {"model": model, "preprocessor": preproc}
+    print("[Cache] Model cache initialization complete.")
+    return MODEL_CACHE
+
 def predict_from_features_dict(feat_dict, model_type, model_path):
     """Run prediction given a feature dictionary, model type, and model path."""
-    model, preproc, impute_values = load_artifacts(model_path)
-    df = prepare_dataframe_from_dict(feat_dict, impute_values)
+    df = prepare_dataframe_from_dict(feat_dict)
+    model_artifacts = MODEL_CACHE.get(model_type)
+    if not model_artifacts:
+        raise ValueError(f"Model '{model_type}' not found in cache. Ensure models are loaded at startup.")
+
+    model = model_artifacts["model"]
+    preproc = model_artifacts["preprocessor"]
     X = preproc.transform(df)
 
     # XGBoost
