@@ -6,15 +6,14 @@ joblib
 matplotlib
 seaborn
 streamlit
+opencv-python-headless
 pillow
 pytesseract
-opencv-python
-easyocr
+
 tqdm
 
 fastapi
 uvicorn
 python-multipart
-tensorflow
 imbalanced-learn
 

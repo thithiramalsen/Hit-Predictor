@@ -7,7 +7,10 @@ import numpy as np
 import os
 from .utils import enhance_image_for_ocr
 
-USE_EASYOCR = True
+# Use Tesseract in production (Vercel) as it's lighter than EasyOCR.
+# The VERCEL environment variable is set by Vercel.
+# Locally, you can set USE_EASYOCR=True in your environment to use EasyOCR.
+USE_EASYOCR = os.getenv("USE_EASYOCR", "False").lower() in ("true", "1") and not os.getenv("VERCEL")
 
 def ocr_with_tesseract(pil_image: Image.Image):
     # optional enhancement to help tesseract
