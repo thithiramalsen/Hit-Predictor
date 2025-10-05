@@ -1,20 +1,15 @@
 pandas>=1.5
 numpy>=1.24
 scikit-learn>=1.2
-xgboost>=1.7
+xgboost>=1.7 # For prediction
 joblib
-matplotlib
-seaborn
-streamlit
 pillow
 pytesseract
 opencv-python
 easyocr
-tqdm
 
 fastapi
 uvicorn
 python-multipart
-tensorflow
+tensorflow-cpu # Use CPU-only version, much smaller
 imbalanced-learn
-
