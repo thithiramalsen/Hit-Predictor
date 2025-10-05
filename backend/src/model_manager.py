@@ -19,24 +19,26 @@ def discover_models(model_root="models"):
                 continue
             if fname.endswith(".joblib"):
                 # Example: model_xg_r.joblib -> xgboost_regression
-                # --- FIX: Use exact filenames to avoid ambiguity with _year models ---
-                if fname == "model_xg_r.joblib":
+                model_id = None
+                model_path = os.path.join(root, fname)
+                if "xg_r" in fname:
                     models["xgboost_regression"] = os.path.join(root, fname)
-                elif fname == "model_xg_c.joblib":
+                elif "xg_c" in fname:
                     models["xgboost_classification"] = os.path.join(root, fname)
-                elif fname == "model_rf_r.joblib":
+                elif "rf_r" in fname:
                     models["randomforest_regression"] = os.path.join(root, fname)
-                elif fname == "model_rf_c.joblib":
+                elif "rf_c" in fname:
                     models["randomforest_classification"] = os.path.join(root, fname)
-                elif fname == "model_lr_r.joblib":
+                # --- FIX: Add discovery for Linear Regression ---
+                elif "lr_r" in fname:
                     models["linear_regression"] = os.path.join(root, fname)
-                elif fname == "model_lr_c.joblib":
+                elif "lr_c" in fname:
                     models["linear_classification"] = os.path.join(root, fname)
             elif fname.endswith(".keras"):
                 # Neural network regression support
-                if fname == "best_model_nn_r.keras":
+                if "nn_r" in fname:
                     models["neuralnet_regression"] = os.path.join(root, fname)
-                elif fname == "best_model_nn_c.keras":
+                elif "nn_c" in fname:
                     models["neuralnet_classification"] = os.path.join(root, fname)
     return models
 
@@ -109,11 +111,12 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
     if "xgboost" in model_type and "regression" in model_type:
         dmatrix = xgb.DMatrix(X)
         pred = float(model.predict(dmatrix)[0])
-        return {"predicted_popularity": pred}
+        return {"predicted_popularity": pred}  # <-- always return object
+        return float(model.predict(dmatrix)[0])
 
     elif "xgboost" in model_type and "classification" in model_type:
         pred_prob = model.predict_proba(X)[0][1]
-        pred_class = int(model.predict(X)[0]) # Use .predict() for class based on internal threshold
+        pred_class = int(pred_prob >= 0.5)
         return {"class": pred_class, "probability": float(pred_prob)}
 
     # Random Forest
