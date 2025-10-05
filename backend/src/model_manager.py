@@ -18,32 +18,13 @@ def discover_models(model_root="models"):
         for fname in files:
             # Debug: Log every file found
             print(f"[discover_models] Found file: {fname} in {root}")
-            if "preprocessor" in fname:
-                continue
-            if fname.endswith(".keras"): # FIX: Skip heavy keras models for now to reduce memory
+            if "preprocessor" in fname or "label_encoder" in fname:
                 continue
             if fname.endswith(".joblib"):
-                # Example: model_xg_r.joblib -> xgboost_regression
-                model_id = None
-                model_path = os.path.join(root, fname)
                 if "xg_r" in fname:
                     models["xgboost_regression"] = os.path.join(root, fname)
-                elif "xg_c" in fname:
-                    models["xgboost_classification"] = os.path.join(root, fname)
-                elif "rf_r" in fname:
-                    models["randomforest_regression"] = os.path.join(root, fname)
-                elif "rf_c" in fname:
-                    models["randomforest_classification"] = os.path.join(root, fname)
-                # --- FIX: Add discovery for Linear Regression ---
-                elif "lr_r" in fname:
-                    models["linear_regression"] = os.path.join(root, fname)
-                elif "lr_c" in fname:
-                    models["linear_classification"] = os.path.join(root, fname)
             elif fname.endswith(".keras"):
-                # Neural network regression support
-                if "nn_r" in fname:
-                    models["neuralnet_regression"] = os.path.join(root, fname)
-                elif "nn_c" in fname:
+                if "nn_c" in fname:
                     models["neuralnet_classification"] = os.path.join(root, fname)
     return models
 
