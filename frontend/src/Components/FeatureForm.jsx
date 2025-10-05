@@ -19,7 +19,7 @@ export function FeatureForm({ features, onChange, image }) {
 
   const sliderFields = new Set([
     "happiness", "danceability", "energy", "acousticness",
-    "instrumentalness", "liveness", "speechiness"
+    "instrumentalness", "liveness", "speechiness", "valence" // Add valence here
   ]);
 
   const allFields = [
@@ -38,6 +38,11 @@ export function FeatureForm({ features, onChange, image }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {allFields.map((key) => {
         let value = features[key] ?? "";
+
+        // Fix: Use the normalized 'valence' for the 'happiness' slider.
+        if (key === "happiness" && features.valence) {
+          value = features.valence;
+        }
 
         if (sliderFields.has(key)) {
           return (

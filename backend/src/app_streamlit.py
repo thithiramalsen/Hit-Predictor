@@ -7,19 +7,17 @@ from PIL import Image
 import os
 
 from ocr_extract import extract_from_image
-from model_manager import predict_from_features_dict
-from preprocessing import load_impute_values
+from preprocessing import load_pipeline, load_impute_values, prepare_dataframe_from_dict
 
 MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "xgboost"))
-# --- Use the classification model ---
-MODEL_PATH = os.path.join(MODEL_DIR, "model_xg_c.joblib")
-MODEL_TYPE = "xgboost_classification"
+MODEL_PATH = os.path.join(MODEL_DIR, "model_xg_r.joblib")
 
 @st.cache_resource
 def load_artifacts():
-    # We only need impute values, model_manager handles the rest
+    model = joblib.load(MODEL_PATH)
+    preproc = load_pipeline()
     impute_values = load_impute_values()
-    return impute_values
+    return model, preproc, impute_values
 
 def band_from_score(score):
     if score >= 70:
@@ -28,12 +26,6 @@ def band_from_score(score):
         return "MODERATE"
     else:
         return "LOW"
-
-def class_from_pred(pred_obj):
-    if pred_obj.get("class") == 1:
-        return f"HIT (Probability: {pred_obj.get('probability', 0):.2f})"
-    else:
-        return f"Non-Hit (Probability: {pred_obj.get('probability', 0):.2f})"
 
 def manual_input_form(impute_values):
     st.header("🔢 Manual Feature Entry")
@@ -54,14 +46,19 @@ def main():
     st.title("🎵 Hit Song Predictor (Chosic → OCR → Model)")
     st.markdown("Upload a Chosic screenshot. The app will OCR features, preprocess them and predict Spotify popularity (0–100).")
 
-    impute_values = load_artifacts()
+    model, preproc, impute_values = load_artifacts()
 
     # --- Manual entry section ---
     manual_vals = manual_input_form(impute_values)
     if manual_vals:
+        df_manual = prepare_dataframe_from_dict(manual_vals, impute_values)
+        st.write("Manual input row:")
+        st.dataframe(df_manual.T)
         try:
-            prediction = predict_from_features_dict(manual_vals, MODEL_TYPE, MODEL_PATH)
-            st.metric("Prediction", class_from_pred(prediction))
+            X_manual = preproc.transform(df_manual)
+            pred_manual = model.predict(X_manual)[0]
+            st.metric("Predicted Popularity (0–100)", f"{pred_manual:.2f}")
+            st.write("Band:", band_from_score(pred_manual))
         except Exception as e:
             st.error("Manual input prediction failed: " + str(e))
 
@@ -79,12 +76,19 @@ def main():
         extracted = extract_from_image(img)
     st.write("Extracted features (raw):", extracted)
 
+    df_input = prepare_dataframe_from_dict(extracted, impute_values)
+    st.write("Input row (after imputation):")
+    st.dataframe(df_input.T)
+
     try:
-        prediction = predict_from_features_dict(extracted, MODEL_TYPE, MODEL_PATH)
-        st.metric("Prediction", class_from_pred(prediction))
+        X = preproc.transform(df_input)
     except Exception as e:
-        st.error("Prediction from image failed: " + str(e))
+        st.error("Preprocessing failed: " + str(e))
         st.stop()
+
+    pred = model.predict(X)[0]
+    st.metric("Predicted Popularity (0–100)", f"{pred:.2f}")
+    st.write("Band:", band_from_score(pred))
 
     st.success("Done. You can retake cropped screenshots for better OCR accuracy.")
 
