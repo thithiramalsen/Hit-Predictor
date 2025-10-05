@@ -11,10 +11,14 @@ from .preprocessing import prepare_dataframe_from_dict
 
 MODEL_CACHE = {}
 
-def discover_models(model_root="models"):
+# Define the absolute path to the 'models' directory relative to this file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(BASE_DIR, "..", "models")
+
+def discover_models(model_root=MODELS_DIR):
     """Recursively discover model files in all subfolders, skipping preprocessors."""
     models = {}
-    for root, dirs, files in os.walk(model_root):
+    for root, _, files in os.walk(model_root):
         for fname in files:
             # Debug: Log every file found
             print(f"[discover_models] Found file: {fname} in {root}")
@@ -94,7 +98,7 @@ def load_all_models_into_cache(model_root="models"):
     This should be called once at application startup.
     """
     if MODEL_CACHE:
-        return MODEL_CACHE
+        return
 
     print("[Cache] Initializing model cache...")
     discovered_paths = discover_models(model_root)
@@ -103,7 +107,7 @@ def load_all_models_into_cache(model_root="models"):
         model, preproc, _ = load_artifacts(model_path)
         MODEL_CACHE[model_id] = {"model": model, "preprocessor": preproc}
     print("[Cache] Model cache initialization complete.")
-    return MODEL_CACHE
+
 
 def predict_from_features_dict(feat_dict, model_type, model_file_path):
     """Run prediction given a feature dictionary, model type, and model path."""
@@ -169,7 +173,7 @@ def get_available_models():
     Returns a list of available models for the API.
     Each model should be a dict with 'id' and 'label'.
     """
-    models = discover_models("models")
+    models = discover_models()
     # Debug: Log the models that will be sent to the frontend
     print(f"[get_available_models] Discovered models: {list(models.keys())}")
     # Convert to list of dicts for frontend
