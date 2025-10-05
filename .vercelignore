@@ -1,0 +1,14 @@
+# Ignore the entire data directory, it's not needed for the live API
+data/
+
+# Ignore all training and evaluation scripts
+backend/src/xgboost/
+backend/src/nn/
+
+# Ignore the local Streamlit app
+backend/src/app_streamlit.py
+
+# Ignore Python's virtual environment and cache files
+__pycache__/
+*.pyc
+.venv/
