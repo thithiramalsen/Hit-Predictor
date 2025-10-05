@@ -1,11 +1,5 @@
 # backend/src/evaluate.py
-import joblib
 import os
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from ..preprocessing import basic_clean, load_pipeline # Corrected import
-import xgboost as xgb
 
 MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),  "..", "..", "models", "xgboost"))
 DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),  "..", "..", "data", "Spotify.csv"))
@@ -13,6 +7,14 @@ MODEL_PATH = os.path.join(MODEL_DIR, "model_xg_r.joblib")
 
 def evaluate():
     df = pd.read_csv(DATA_PATH)
+    # --- This block is now safe inside the main execution guard ---
+    import joblib
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    from ..preprocessing import basic_clean, load_pipeline # Corrected import
+    import xgboost as xgb
+
     df = basic_clean(df)
     y = df["popularity"].values
     X_df = df.drop(columns=["popularity"])
@@ -41,4 +43,4 @@ def evaluate():
     print("Saved plot to", out)
 
 if __name__ == "__main__":
-    evaluate()
+    evaluate() # The function call itself is fine here
