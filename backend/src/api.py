@@ -1,9 +1,6 @@
 # api.py
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from .model_manager import predict_from_features_dict, load_all_models_into_cache
-from .model_manager import get_available_models
-from .ocr_extract import extract_features_from_image
 from .utils import parse_key, parse_mode
 import shutil
 import tempfile 
@@ -53,12 +50,21 @@ app.add_middleware(
 async def startup_event():
     """Kick off model loading in the background to avoid blocking port binding on Render."""
     try:
+        # Import inside the background thread to avoid heavy imports on the main thread
+        def warm_up():
+            from .model_manager import load_all_models_into_cache  # lazy import
+            load_all_models_into_cache()
+
         # Run the expensive model cache warm-up in a background thread.
-        asyncio.create_task(asyncio.to_thread(load_all_models_into_cache))
+        asyncio.create_task(asyncio.to_thread(warm_up))
         print("[Startup] Triggered background model cache initialization.")
     except Exception as e:
         # Don't fail startup if background warm-up can't be scheduled.
         print(f"[Startup] Warning: failed to schedule model cache init: {e}")
+
+@app.get("/health")
+def health():
+    return {"ok": True}
 
 def normalize_features(feat):
     out = feat.copy()
@@ -86,11 +92,15 @@ def list_models():
     """
     Returns available ML models.
     """
+    # Lazy import to avoid heavy imports on startup
+    from .model_manager import get_available_models
     models = get_available_models()
     return {"models": models}
 
 @app.post("/ocr")
 async def ocr(file: UploadFile = File(...)):
+    # Lazy import to avoid heavy easyocr/torch import at startup
+    from .ocr_extract import extract_features_from_image
     tmpdir = tempfile.mkdtemp()
     tmp_path = os.path.join(tmpdir, file.filename)
     with open(tmp_path, "wb") as buffer:
@@ -132,7 +142,7 @@ async def predict(model_id: str = Form(...), features: str = Form(...)):
     print(f"[API] Normalized features_dict: {features_dict}")
 
     # We need the original model file path for the label encoder, not the cached object.
-    from .model_manager import discover_models
+    from .model_manager import discover_models, predict_from_features_dict
     discovered_models = discover_models("models")
     model_file_path = discovered_models.get(model_id)
 
