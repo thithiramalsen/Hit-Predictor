@@ -20,6 +20,8 @@ def discover_models(model_root="models"):
             print(f"[discover_models] Found file: {fname} in {root}")
             if "preprocessor" in fname:
                 continue
+            if fname.endswith(".keras"): # FIX: Skip heavy keras models for now to reduce memory
+                continue
             if fname.endswith(".joblib"):
                 # Example: model_xg_r.joblib -> xgboost_regression
                 model_id = None

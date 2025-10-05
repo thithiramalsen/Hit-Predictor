@@ -92,7 +92,9 @@ def save_clean_csv(raw_csv_path, out_path="data/Spotify_clean.csv"):
 
 def load_impute_values(path=None):
     path = path or os.path.join(MODEL_DIR, "impute_values.joblib")
-    return joblib.load(path)
+    if os.path.exists(path):
+        return joblib.load(path)
+    raise FileNotFoundError(f"impute_values.joblib not found at expected path: {path}")
 
 def prepare_dataframe_from_dict(feat_dict, impute_values=None):
     import pandas as pd
