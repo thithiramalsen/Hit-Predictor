@@ -1,7 +1,7 @@
 # api.py
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from .predict import predict_from_features_dict, normalize_extracted_features
+from .predict import predict_from_features_dict
 from .model_manager import get_available_models
 from .ocr_extract import extract_features_from_image
 from .utils import parse_key, parse_mode
@@ -62,8 +62,6 @@ async def ocr(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
     features = extract_features_from_image(tmp_path)
     print("[API] OCR extracted features:", features) # Debug
-    features = normalize_extracted_features(features)
-    print("[API] Normalized features sent to frontend:", features) # Debug
     return {"features": features}
 
 @app.post("/predict")

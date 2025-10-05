@@ -9,16 +9,13 @@ from .utils import enhance_image_for_ocr
 
 USE_EASYOCR = True
 
+# Initialize the reader once to be reused across requests. This is crucial for performance.
+EASYOCR_READER = easyocr.Reader(["en"], gpu=False) if USE_EASYOCR else None
+
 def ocr_with_tesseract(pil_image: Image.Image):
     # optional enhancement to help tesseract
     img = pil_image.convert("RGB")
     text = pytesseract.image_to_string(img, lang="eng", config='--psm 6')
-    return text
-
-def ocr_with_easyocr(image_path):
-    reader = easyocr.Reader(["en"], gpu=False)
-    res = reader.readtext(image_path, detail=0)
-    text = "\n".join(res)
     return text
 
 def extract_features_from_text(text: str) -> dict:
@@ -111,7 +108,8 @@ def extract_from_image(image_path_or_pil):
     if isinstance(image_path_or_pil, str):
         path = image_path_or_pil
         if USE_EASYOCR:
-            text = ocr_with_easyocr(path)
+            res = EASYOCR_READER.readtext(path, detail=0)
+            text = "\n".join(res)
         else:
             img = Image.open(path)
             text = ocr_with_tesseract(img)
@@ -122,7 +120,8 @@ def extract_from_image(image_path_or_pil):
         tmp_path = "tmp_ocr.png"
         pil_img.save(tmp_path)
         if USE_EASYOCR:
-            text = ocr_with_easyocr(tmp_path)
+            res = EASYOCR_READER.readtext(tmp_path, detail=0)
+            text = "\n".join(res)
         else:
             text = ocr_with_tesseract(pil_img)
     if tmp_path and os.path.exists(tmp_path):
