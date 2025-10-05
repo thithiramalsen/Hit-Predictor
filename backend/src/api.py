@@ -102,7 +102,9 @@ async def ocr(file: UploadFile = File(...)):
     # Lazy import to avoid heavy easyocr/torch import at startup
     from .ocr_extract import extract_features_from_image
     tmpdir = tempfile.mkdtemp()
-    tmp_path = os.path.join(tmpdir, file.filename)
+    # Use a default filename if one is not provided (e.g., from a paste event)
+    filename = file.filename or "pasted_image.png"
+    tmp_path = os.path.join(tmpdir, filename)
     with open(tmp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     features = extract_features_from_image(tmp_path)

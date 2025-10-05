@@ -24,12 +24,25 @@ def discover_models(model_root=MODELS_DIR):
             print(f"[discover_models] Found file: {fname} in {root}")
             if "preprocessor" in fname or "label_encoder" in fname:
                 continue
-            if fname.endswith(".joblib"):
+            
+            model_path = os.path.join(root, fname)
+            
+            # More robust model identification
+            if fname.endswith((".joblib", ".keras")):
                 if "xg_r" in fname:
-                    models["xgboost_regression"] = os.path.join(root, fname)
-            elif fname.endswith(".keras"):
-                if "nn_c" in fname:
-                    models["neuralnet_classification"] = os.path.join(root, fname)
+                    models["xgboost_regression"] = model_path
+                elif "xg_c" in fname:
+                    models["xgboost_classification"] = model_path
+                elif "nn_r" in fname:
+                    models["neuralnet_regression"] = model_path
+                elif "nn_c" in fname:
+                    models["neuralnet_classification"] = model_path
+                elif "rf_r" in fname:
+                    models["randomforest_regression"] = model_path
+                elif "rf_c" in fname:
+                    models["randomforest_classification"] = model_path
+                elif "lr_r" in fname:
+                    models["linear_regression"] = model_path
     return models
 
 
