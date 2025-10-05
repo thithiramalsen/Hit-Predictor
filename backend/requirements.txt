@@ -1,0 +1,13 @@
+fastapi
+python-multipart
+scikit-learn
+xgboost
+pandas
+numpy
+joblib
+Pillow
+easyocr
+opencv-python-headless
+tensorflow
+scipy
+imbalanced-learn
