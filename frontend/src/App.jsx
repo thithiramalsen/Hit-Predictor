@@ -126,6 +126,8 @@ function App() {
       }, ...prev.slice(0, 4)]);
     } catch (error) {
       console.error('Prediction failed:', error);
+      // Clear stale prediction on error to prevent rendering issues
+      setPrediction(null);
     } finally {
       setIsLoading(false);
     }
@@ -181,7 +183,12 @@ function App() {
         {view === 'form' && features && (
           <div className="space-y-8">
             <FeatureForm features={features} onChange={setFeatures} image={uploadedImage} />
-            <ModelDropdown selected={selectedModel} onSelect={setSelectedModel} />
+            <ModelDropdown 
+              selected={selectedModel} 
+              onSelect={setSelectedModel}
+              // Set a default model once models are loaded
+              onModelsLoaded={(models) => !selectedModel && setSelectedModel(models.find(m => m.id === 'xgboost_regression'))}
+            />
             <div className="grid grid-cols-2 gap-4">
               <button
                 className="btn btn-secondary"

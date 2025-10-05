@@ -105,15 +105,16 @@ def load_all_models_into_cache(model_root="models"):
     print("[Cache] Model cache initialization complete.")
     return MODEL_CACHE
 
-def predict_from_features_dict(feat_dict, model_type, model_path):
+def predict_from_features_dict(feat_dict, model_type, model_file_path):
     """Run prediction given a feature dictionary, model type, and model path."""
-    df = prepare_dataframe_from_dict(feat_dict)
     model_artifacts = MODEL_CACHE.get(model_type)
     if not model_artifacts:
         raise ValueError(f"Model '{model_type}' not found in cache. Ensure models are loaded at startup.")
 
     model = model_artifacts["model"]
     preproc = model_artifacts["preprocessor"]
+    
+    df = prepare_dataframe_from_dict(feat_dict, preprocessor=preproc)
     X = preproc.transform(df)
 
     # XGBoost
@@ -153,7 +154,7 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
         pred_class_idx = int(np.argmax(preds_proba))
         pred_prob = float(np.max(preds_proba))
         # Load the label encoder to get the string label
-        le_path = os.path.join(os.path.dirname(model_path), "label_encoder.joblib")
+        le_path = os.path.join(os.path.dirname(model_file_path), "label_encoder.joblib")
         if os.path.exists(le_path):
             le = joblib.load(le_path)
             pred_class_label = le.inverse_transform([pred_class_idx])[0]

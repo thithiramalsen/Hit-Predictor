@@ -49,6 +49,11 @@ def normalize_features(feat):
         out["key"] = int(out["key"])
         if "mode" not in out or out["mode"] is None:
             out["mode"] = 1
+    
+    # Ensure 'explicit' is an integer, not a string '0' or '1'
+    if "explicit" in out:
+        out["explicit"] = int(out["explicit"])
+
     return out
 
 @app.get("/models")
@@ -67,7 +72,21 @@ async def ocr(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
     features = extract_features_from_image(tmp_path)
     print("[API] OCR extracted features:", features) # Debug
-    return {"features": features}
+
+    # Normalize percentage values from OCR (0-100 -> 0-1) and map happiness to valence
+    normalized_features = features.copy()
+    for key in ['danceability', 'energy', 'happiness', 'acousticness', 'instrumentalness', 'liveness', 'speechiness']:
+        if key in normalized_features and normalized_features[key] > 1:
+            normalized_features[key] /= 100.0
+
+    # If 'happiness' was extracted, map it to 'valence' for model compatibility
+    if 'happiness' in normalized_features:
+        normalized_features['valence'] = normalized_features.pop('happiness')
+    elif 'valence' in normalized_features and normalized_features['valence'] > 1:
+        # Also normalize valence if it exists and is on a 0-100 scale
+        normalized_features['valence'] /= 100.0
+
+    return {"features": normalized_features}
 
 @app.post("/predict")
 async def predict(model_id: str = Form(...), features: str = Form(...)):
@@ -87,15 +106,16 @@ async def predict(model_id: str = Form(...), features: str = Form(...)):
     features_dict = normalize_features(features_dict)
     print(f"[API] Normalized features_dict: {features_dict}")
 
-    models = load_all_models_into_cache()
-    model_path = models.get(model_id)
-    if not model_path:
-        print(f"Model id '{model_id}' not found in discovered models: {list(models.keys())}")
+    # We need the original model file path for the label encoder, not the cached object.
+    from .model_manager import discover_models
+    discovered_models = discover_models("models")
+    model_file_path = discovered_models.get(model_id)
+
+    if not model_file_path:
+        print(f"Model id '{model_id}' not found in discovered models: {list(discovered_models.keys())}")
         raise ValueError(f"Model id '{model_id}' not found.")
 
-    print(f"[API] Using model_path: {model_path}")
-
-    result = predict_from_features_dict(features_dict, model_id, model_path) # model_path is not used now but keeping for signature
+    result = predict_from_features_dict(features_dict, model_id, model_file_path)
     print(f"[API] Prediction result: {result}")
 
     # If regression, print popularity score directly for clarity
