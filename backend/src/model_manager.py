@@ -164,11 +164,16 @@ def get_available_models():
     Returns a list of available models for the API.
     Each model should be a dict with 'id' and 'label'.
     """
+    # Define the models that the frontend explicitly supports.
+    SUPPORTED_MODEL_IDS = [
+        "xgboost_regression",
+        "neuralnet_classification"
+    ]
     models = discover_models() # Will use the corrected MODELS_DIR path
     # Debug: Log the models that will be sent to the frontend
     print(f"[get_available_models] Discovered models: {list(models.keys())}")
-    # Convert to list of dicts for frontend
+    # Filter discovered models to only include those supported by the frontend.
     return [
         {"id": key, "label": key.replace("_", " ").title()}
-        for key in models.keys()
+        for key in models.keys() if key in SUPPORTED_MODEL_IDS
     ]
