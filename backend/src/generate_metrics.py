@@ -6,14 +6,14 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from model_manager import discover_models, get_preprocessor_path
 
 # Define paths relative to the script location
-BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATA_DIR = os.path.join(BACKEND_DIR, "data")
-MODELS_DIR = os.path.join(BACKEND_DIR, "models")
-FRONTEND_PUBLIC_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "frontend", "public"))
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..")) # This is backend/
+PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_DIR, "..")) # This is the project root
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
+FRONTEND_PUBLIC_DIR = os.path.join(PROJECT_ROOT, "frontend", "public")
 
 X_TEST_PATH = os.path.join(DATA_DIR, "X_test_cls.csv")
 Y_TEST_PATH = os.path.join(DATA_DIR, "y_test_cls.csv")
-OUTPUT_PATH = os.path.join(FRONTEND_PUBLIC_DIR, "evaluation_metrics.json")
 
 def evaluate_model(model_id, model_path):
     """
@@ -48,13 +48,13 @@ def evaluate_model(model_id, model_path):
     print(f"  - F1-Score: {metrics['f1_score']:.3f}")
     return metrics
 
-def main():
+def generate_all_metrics():
     """
-    Discovers all classification models, evaluates them, and saves metrics to a JSON file.
+    Discovers all classification models, evaluates them, and returns a metrics dictionary.
     """
     if not os.path.exists(X_TEST_PATH) or not os.path.exists(Y_TEST_PATH):
-        print(f"Error: Test data not found. Make sure '{X_TEST_PATH}' and '{Y_TEST_PATH}' exist.")
-        return
+        print(f"Warning: Test data not found. Cannot generate metrics. Looked for '{X_TEST_PATH}'")
+        return {}
 
     all_models = discover_models(MODELS_DIR)
     classification_models = {
@@ -66,6 +66,14 @@ def main():
         metrics = evaluate_model(model_id, model_path)
         if metrics:
             all_metrics[model_id] = metrics
+    
+    return all_metrics
+
+def main():
+    """
+    Generates metrics and saves them to a JSON file for local use.
+    """
+    all_metrics = generate_all_metrics()
 
     os.makedirs(FRONTEND_PUBLIC_DIR, exist_ok=True)
     with open(OUTPUT_PATH, "w") as f:

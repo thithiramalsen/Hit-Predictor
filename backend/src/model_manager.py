@@ -8,10 +8,14 @@ from .preprocessing import prepare_dataframe_from_dict
 import pandas as pd
 from .preprocessing import prepare_dataframe_from_dict
 
+# --- Vercel Path Correction ---
+# Get the absolute path to the 'models' directory relative to this script
+MODELS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'models'))
+
 def discover_models(model_root="models"):
     """Recursively discover model files in all subfolders, skipping preprocessors."""
     models = {}
-    for root, dirs, files in os.walk(model_root):
+    for root, dirs, files in os.walk(MODELS_DIR): # Use the absolute path
         for fname in files:
             # Debug: Log every file found
             print(f"[discover_models] Found file: {fname} in {root}")
@@ -160,7 +164,7 @@ def get_available_models():
     Returns a list of available models for the API.
     Each model should be a dict with 'id' and 'label'.
     """
-    models = discover_models("models")
+    models = discover_models() # Will use the corrected MODELS_DIR path
     # Debug: Log the models that will be sent to the frontend
     print(f"[get_available_models] Discovered models: {list(models.keys())}")
     # Convert to list of dicts for frontend

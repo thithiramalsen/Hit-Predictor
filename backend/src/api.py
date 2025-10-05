@@ -3,7 +3,7 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from .predict import predict_from_features_dict, normalize_extracted_features
 from .model_manager import get_available_models
-from .ocr_extract import extract_features_from_image
+from .ocr_extract import extract_features_from_image # This is extract_from_image in ocr_extract.py
 from .utils import parse_key, parse_mode
 import shutil
 import tempfile 
@@ -45,6 +45,15 @@ def list_models():
     """
     models = get_available_models()
     return {"models": models}
+
+@app.get("/evaluation_metrics")
+def get_metrics():
+    """
+    Generates and returns evaluation metrics for classification models.
+    """
+    from .generate_metrics import generate_all_metrics
+    metrics = generate_all_metrics()
+    return metrics
 
 @app.post("/ocr")
 async def ocr(file: UploadFile = File(...)):

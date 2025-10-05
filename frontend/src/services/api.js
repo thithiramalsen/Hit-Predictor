@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000';
+const API_URL = '/api';
 
 export const api = {
   getModels: async () => {
@@ -36,7 +36,7 @@ export const api = {
   },
 
   getEvaluationMetrics: async () => {
-    const response = await axios.get('/evaluation_metrics.json');
+    const response = await axios.get(`${API_URL}/evaluation_metrics`);
     return response.data;
   }
 };
