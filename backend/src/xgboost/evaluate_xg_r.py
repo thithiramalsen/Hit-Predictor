@@ -4,8 +4,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from ..preprocessing import basic_clean, load_pipeline
-from src.xgboost.train_xg_r import train  # only if you want to retrain from here
+from ..preprocessing import basic_clean, load_pipeline # Corrected import
 import xgboost as xgb
 
 MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),  "..", "..", "models", "xgboost"))
