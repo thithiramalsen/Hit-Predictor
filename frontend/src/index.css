@@ -5,6 +5,9 @@
 @layer base {
   body {
     @apply min-h-screen bg-spotify-black text-spotify-lightgray font-sans;
+    background-image: radial-gradient(1000px 600px at 80% -20%, rgba(29,185,84,0.18), transparent),
+                      radial-gradient(800px 500px at -10% 20%, rgba(29,185,84,0.12), transparent);
+    background-attachment: fixed;
   }
 }
 
@@ -18,7 +21,7 @@
   }
 
   .btn-primary {
-    @apply bg-spotify-green text-black hover:bg-opacity-80;
+    @apply bg-spotify-green text-black hover:bg-opacity-90 shadow-spotify;
   }
 
   .btn-lg {
@@ -26,7 +29,7 @@
   }
 
   .btn-secondary {
-    @apply bg-spotify-darkgray text-white hover:bg-opacity-80 border border-spotify-lightgray/50;
+    @apply bg-spotify-darkgray text-white hover:bg-opacity-80 border border-spotify-lightgray/50 backdrop-blur-sm;
   }
 
   .slider-thumb::-webkit-slider-thumb {
@@ -35,4 +38,35 @@
   .slider-thumb::-moz-range-thumb {
     @apply w-4 h-4 bg-white rounded-full appearance-none ring-2 ring-spotify-green;
   }
+}
+
+/* Extra animations */
+@layer utilities {
+  .animate-spin-slow {
+    animation: spin 8s linear infinite;
+  }
+  .fade-in {
+    animation: fade-in 800ms ease-out both;
+  }
+  .glow-text {
+    text-shadow: 0 0 16px rgba(29,185,84,0.45), 0 0 32px rgba(29,185,84,0.25);
+  }
+  .bg-particles {
+    background-image:
+      radial-gradient(2px 2px at 20% 30%, rgba(29,185,84,0.5) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 70% 60%, rgba(255,255,255,0.25) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 40% 80%, rgba(29,185,84,0.4) 50%, transparent 51%);
+    background-size: 100% 100%;
+    animation: particle-drift 60s linear infinite alternate;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes particle-drift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
 }

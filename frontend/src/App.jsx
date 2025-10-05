@@ -9,6 +9,7 @@ import { NavBar } from './Components/NavBar';
 import { ModelDropdown } from './Components/ModelDropdown';
 import { PredictionResult } from './Components/PredictionResult';
 import { HistoryList } from './Components/HistoryList';
+import { Notification } from './Components/Notification';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { api } from './services/api';
 import { KEY_OPTIONS } from './utils/constants'; // or define KEY_OPTIONS in this file
@@ -39,6 +40,7 @@ function App() {
   const [view, setView] = useState('landing'); // 'landing', 'choice', 'upload', 'form', 'about', 'privacy'
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useLocalStorage('predictions', []);
+  const [notification, setNotification] = useState(null);
 
   const handleClear = () => {
     setFeatures(null);
@@ -81,6 +83,14 @@ function App() {
     setIsLoading(true);
     try {
       const extractedFeatures = await api.uploadImage(file);
+
+      // Check if OCR returned any useful features
+      if (Object.keys(extractedFeatures).length < 2) {
+        setNotification("Could not extract relevant song features from the image. Please try a different, clearer screenshot or enter the details manually.");
+        setIsLoading(false);
+        return; // Stop further processing
+      }
+
       console.log("Raw features from backend OCR:", extractedFeatures); // Debug
       const normalized = normalizeFeatures(extractedFeatures);
       console.log("Normalized features for form:", normalized); // Debug
@@ -88,7 +98,7 @@ function App() {
       setView('form');
       setUploadedImage(URL.createObjectURL(file));
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('Upload failed:', error);      
       // Add user feedback for error
     } finally {
       setIsLoading(false);
@@ -96,8 +106,11 @@ function App() {
   };
 
   const handlePredict = async () => {
+    if (!selectedModel) {
+      setNotification("Please select a model before predicting.");
+      return;
+    }
     setIsLoading(true);
-    if (!selectedModel || !features) return;
 
     // Always normalize before prediction
     const normalized = normalizeFeatures(features);
@@ -120,12 +133,14 @@ function App() {
 
     return (
     <div className="min-h-screen bg-spotify-black text-white">
+      <Notification message={notification} onClose={() => setNotification(null)} />
       <NavBar
         onTitleClick={handleClear}
         onAboutClick={() => setView('about')}
         onPrivacyClick={() => setView('privacy')}
+        onContactClick={() => setView('privacy')}
       />
-      <main className="max-w-4xl mx-auto p-4 space-y-8">
+      <main className={`mx-auto p-4 space-y-8 ${view === 'landing' ? 'max-w-7xl' : 'max-w-4xl'}`}>
         {view === 'choice' && (
           <div className="mb-4">
             <button onClick={() => setView('landing')} className="btn btn-secondary">
@@ -164,34 +179,33 @@ function App() {
         {view === 'upload' && <UploadZone onUpload={handleUpload} loading={isLoading} />}
 
         {view === 'form' && features && (
-            <div className="space-y-6">
-              <FeatureForm features={features} onChange={setFeatures} image={uploadedImage} />
-              <ModelDropdown selected={selectedModel} onSelect={setSelectedModel} />
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  className="btn btn-secondary"
-                  onClick={handleClear}
-                >
-                  Start Over
-                </button>
-                <button
-                  className="btn btn-primary shadow-lg shadow-spotify-green/20"
-                  onClick={handlePredict}
+          <div className="space-y-8">
+            <FeatureForm features={features} onChange={setFeatures} image={uploadedImage} />
+            <ModelDropdown selected={selectedModel} onSelect={setSelectedModel} />
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                className="btn btn-secondary"
+                onClick={handleClear}
+              >
+                Start Over
+              </button>
+              <button
+                className="btn btn-primary shadow-lg shadow-spotify-green/20"
+                onClick={handlePredict}
                 disabled={!selectedModel || isLoading}
-                >
-                  Predict
-                </button>
-              </div>
+              >
+                {isLoading ? "Predicting..." : "Predict"}
+              </button>
             </div>
+            {prediction && <PredictionResult prediction={prediction} />}
+            <HistoryList predictions={history} />
+          </div>
         )}
 
         {view === 'about' && <AboutPage />}
 
         {view === 'privacy' && <PrivacyPage />}
 
-        {prediction && <PredictionResult prediction={prediction} />}
-
-        <HistoryList predictions={history} />
       </main>
     </div>
   );
