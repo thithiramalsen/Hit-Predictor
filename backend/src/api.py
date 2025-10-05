@@ -9,17 +9,35 @@ import shutil
 import tempfile 
 import requests
 import os
-import json  # <-- add this
+import json
+import uvicorn  # <-- Added for direct execution
 
 
 app = FastAPI(title="Hit Predictor API")
 
-# Get the frontend URL from environment variables, with a default for local dev
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # 5173 is Vite's default
+# Get the frontend URLs from environment variables, with defaults for local dev
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # Primary URL (Vite's default is 5173)
+FRONTEND_URL_ALT = os.getenv("FRONTEND_URL_ALT", "") # Secondary URL (for Vercel preview URLs)
 
 origins = [
-    FRONTEND_URL,
+    "http://localhost:5173",  # Local Vite dev server
+    "http://localhost:3000",  # Local Next.js dev server
 ]
+
+# Add environment-provided URLs if they exist
+if FRONTEND_URL:
+    origins.append(FRONTEND_URL)
+if FRONTEND_URL_ALT:
+    origins.append(FRONTEND_URL_ALT)
+
+# Handle Vercel domains
+for domain in ["hit-predictor.vercel.app", "hit-predictor-git-ver-e81b2c-thithira-malsens-projects-2676972b.vercel.app"]:
+    if domain not in origins:
+        origins.append(f"https://{domain}")
+
+# Remove duplicates and empty values
+origins = [origin for origin in origins if origin]
+origins = list(set(origins))
 
 # Enable CORS for React frontend
 app.add_middleware(
@@ -123,3 +141,10 @@ async def predict(model_id: str = Form(...), features: str = Form(...)):
         print(f"[API] Predicted popularity score: {result['predicted_popularity']}")
 
     return {"prediction": result}
+
+# Add this section to make the script directly runnable
+if __name__ == "__main__":
+    # Get port from environment variable or default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    # Start the server with the correct host and port
+    uvicorn.run("src.api:app", host="0.0.0.0", port=port)
