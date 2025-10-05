@@ -8,7 +8,7 @@ from sklearn.metrics import (
     confusion_matrix, ConfusionMatrixDisplay
 )
 import matplotlib.pyplot as plt
-from ..preprocessing import build_pipeline
+from ..preprocessing import basic_clean, build_pipeline
 
 # Paths
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "Spotify_clean.csv")
@@ -21,7 +21,8 @@ REPORT_PATH = os.path.join(MODEL_DIR, "confusion_matrix_rf_c.png")
 
 # Load dataset
 df = pd.read_csv(DATA_PATH)
-# df = basic_clean(df) # No need to clean, data is already cleaned and split
+df = basic_clean(df)
+
 X = df.drop(columns=["popularity"])
 y = (df["popularity"] >= 70).astype(int)
 

@@ -35,10 +35,5 @@ export const api = {
       console.error('api.js: predict error', error);
       throw error;
     }
-  },
-
-  getEvaluationMetrics: async () => {
-    const response = await axios.get('/evaluation_metrics.json');
-    return response.data;
   }
 };

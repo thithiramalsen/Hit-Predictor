@@ -2,25 +2,15 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    confusion_matrix,
-    precision_recall_curve,
-    ConfusionMatrixDisplay,
-    PrecisionRecallDisplay,
-)
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, precision_recall_curve, f1_score, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 # Paths
-BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-MODEL_DIR = os.path.join(BACKEND_DIR, "models", "xgboost")
-MODEL_PATH = os.path.join(MODEL_DIR, "model_xg_c.joblib")
-PREPROC_PATH = os.path.join(MODEL_DIR, "preprocessor_xg_c.joblib")
+MODEL_PATH = os.path.join("models", "xgboost", "model_xg_c.joblib")
+PREPROC_PATH = os.path.join("models", "xgboost", "preprocessor_xg_c.joblib")
 X_TEST_PATH = os.path.join("..", "..", "data", "X_test_cls.csv")
 Y_TEST_PATH = os.path.join("..", "..", "data", "y_test_cls.csv")
+REPORT_PATH = os.path.join("..", "..", "models", "classification", "confusion_matrix.png")
 
 # Load model and test data
 clf = joblib.load(MODEL_PATH)
@@ -28,7 +18,7 @@ X_test = pd.read_csv(X_TEST_PATH)
 y_test = pd.read_csv(Y_TEST_PATH).values.ravel()
 
 # Load and apply preprocessor
-preproc = joblib.load(PREPROC_PATH)
+preproc = joblib.load(os.path.join("models", "xgboost", "preprocessor_xg_c.joblib"))
 X_test_preproc = preproc.transform(X_test)
 
 # Predictions
@@ -41,14 +31,12 @@ print(f"Precision: {precision_score(y_test, y_pred):.3f}")
 print(f"Recall   : {recall_score(y_test, y_pred):.3f}")
 print(f"F1 Score : {f1_score(y_test, y_pred):.3f}")
 
-# --- Confusion Matrix Plot (Default Threshold) ---
-cm = confusion_matrix(y_test, y_pred, labels=clf.classes_)
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Non-Hit", "Hit"])
 disp.plot(cmap="Blues")
-plt.title("XGBoost: Hit vs Non-Hit Confusion Matrix (Threshold=0.5)")
-report_path = os.path.join(MODEL_DIR, "confusion_matrix_xg_c.png")
-plt.savefig(report_path, dpi=150, bbox_inches="tight")
-print(f"\nSaved confusion matrix to {report_path}")
+plt.title("Hit vs Non-Hit Confusion Matrix")
+plt.savefig(REPORT_PATH)
 plt.show()
 
 
@@ -59,20 +47,11 @@ f1_scores = np.where((precisions + recalls) > 0,
                      2 * (precisions * recalls) / (precisions + recalls),
                      0)
 best_idx = f1_scores[:-1].argmax()  # ignore the last precision=1 point
-best_threshold = thresholds[best_idx] if best_idx < len(thresholds) else 0.5
+best_threshold = thresholds[best_idx]
 
-print("\n--- Finding Optimal Threshold ---")
-print(f"Best threshold based on F1 score: {best_threshold:.3f}")
-print(f"Best F1 Score on test set: {f1_scores[best_idx]:.3f}")
 
-# --- Precision-Recall Curve Plot ---
-pr_display = PrecisionRecallDisplay(precision=precisions, recall=recalls)
-pr_display.plot()
-plt.title("XGBoost: Precision-Recall Curve")
-pr_report_path = os.path.join(MODEL_DIR, "precision_recall_curve_xg_c.png")
-plt.savefig(pr_report_path, dpi=150, bbox_inches="tight")
-print(f"Saved Precision-Recall curve to {pr_report_path}")
-plt.show()
+print("Best threshold:", best_threshold)
+print("Best F1:", f1_scores[best_idx])
 
 
 # Apply best threshold
@@ -87,9 +66,6 @@ print(f"F1 Score : {f1_score(y_test, y_pred_best):.3f}")
 # Confusion matrix at best threshold
 cm_best = confusion_matrix(y_test, y_pred_best)
 disp_best = ConfusionMatrixDisplay(confusion_matrix=cm_best, display_labels=["Non-Hit", "Hit"])
-disp_best.plot(cmap="Greens")
+disp_best.plot(cmap="Purples")
 plt.title(f"Confusion Matrix (Threshold={best_threshold:.2f})")
-best_cm_path = os.path.join(MODEL_DIR, "confusion_matrix_best_thresh_xg_c.png")
-plt.savefig(best_cm_path, dpi=150, bbox_inches="tight")
-print(f"Saved best-threshold confusion matrix to {best_cm_path}")
 plt.show()

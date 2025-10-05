@@ -1,12 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../services/api";
 
-// Define user-friendly labels for your top models
-const MODEL_MAP = {
-  'xgboost_regression': 'Predict Popularity Score (0-100)',
-  'neuralnet_classification': 'Will it be a Hit?'
-};
-
 export function ModelDropdown({ selected, onSelect }) {
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,13 +9,8 @@ export function ModelDropdown({ selected, onSelect }) {
     api.getModels()
       .then(models => {
         // Debug: Log the models received from the API
-        console.log("All models from API:", models);
-        // Filter for only the models we want to show and map their labels
-        const filteredAndMapped = models
-          .filter(m => MODEL_MAP[m.id])
-          .map(m => ({ ...m, label: MODEL_MAP[m.id] }));
-        console.log("Filtered models for dropdown:", filteredAndMapped);
-        setModels(filteredAndMapped);
+        console.log("Models received from API:", models);
+        setModels(models);
       })
       .catch((error) => {
         console.error("Failed to fetch models:", error);

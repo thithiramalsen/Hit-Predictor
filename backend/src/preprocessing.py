@@ -39,7 +39,7 @@ def basic_clean(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             if df[col].isna().sum() > 0:
                 df[col].fillna(df[col].median(), inplace=True)
-    # Remove unrealistic durations (>60 min) outlier
+    # Remove unrealistic durations (>60 min)
     if "duration_min" in df.columns:
         df = df[df["duration_min"] <= 60]
     return df
