@@ -196,3 +196,4 @@ def get_available_models():
         {"id": key, "label": key.replace("_", " ").title()}
         for key in models.keys()
     ]
+
