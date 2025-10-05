@@ -140,7 +140,6 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
         dmatrix = xgb.DMatrix(X)
         pred = float(model.predict(dmatrix)[0])
         return {"predicted_popularity": pred}  # <-- always return object
-        return float(model.predict(dmatrix)[0])
 
     elif "xgboost" in model_type and "classification" in model_type:
         pred_prob = model.predict_proba(X)[0][1]
@@ -196,4 +195,3 @@ def get_available_models():
         {"id": key, "label": key.replace("_", " ").title()}
         for key in models.keys()
     ]
-
