@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: hit-predictor-backend
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python run.py
+    envVars:
+      - key: FRONTEND_URL
+        value: https://hit-predictor.vercel.app
+      - key: FRONTEND_URL_ALT
+        value: https://hit-predictor-git-ver-e81b2c-thithira-malsens-projects-2676972b.vercel.app
+    autoDeploy: true
