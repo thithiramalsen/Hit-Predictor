@@ -48,6 +48,7 @@ function App() {
     setUploadedImage(null);
     setPrediction(null);
     setView('landing');
+    setHistory([]); // Clear the prediction history as well
   };
 
   const normalizeFeatures = (features) => {
@@ -204,7 +205,7 @@ function App() {
                 {isLoading ? "Predicting..." : "Predict"}
               </button>
             </div>
-            {prediction && <PredictionResult prediction={prediction} />}
+            {prediction && <PredictionResult key={history[0]?.timestamp} prediction={prediction} />}
             <HistoryList predictions={history} />
           </div>
         )}

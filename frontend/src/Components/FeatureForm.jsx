@@ -46,7 +46,7 @@ export function FeatureForm({ features, onChange, image }) {
             <SliderInput 
               key={key} 
               label={key} 
-              value={value > 1 ? value : value * 100} onChange={v => handleInputChange(key, v / 100)} />
+              value={value > 1 ? value : value * 100} onChange={v => handleInputChange(featureKey, v / 100)} />
           );
         }
         if (key === "explicit") {
