@@ -7,7 +7,7 @@ const MODEL_MAP = {
   'neuralnet_classification': 'Will it be a Hit?'
 };
 
-export function ModelDropdown({ selected, onSelect }) {
+export function ModelDropdown({ selected, onSelect, onModelsLoaded }) {
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,6 +21,9 @@ export function ModelDropdown({ selected, onSelect }) {
           .filter(m => MODEL_MAP[m.id])
           .map(m => ({ ...m, label: MODEL_MAP[m.id] }));
         console.log("Filtered models for dropdown:", filteredAndMapped);
+        if (onModelsLoaded) {
+          onModelsLoaded(filteredAndMapped);
+        }
         setModels(filteredAndMapped);
       })
       .catch((error) => {

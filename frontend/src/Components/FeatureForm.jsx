@@ -31,22 +31,22 @@ export function FeatureForm({ features, onChange, image }) {
   return (
     <div className="bg-spotify-darkgray rounded-lg p-6 space-y-6">
       {image && (
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-4">
           <img src={image} alt="Uploaded Screenshot" className="max-h-96 rounded-lg" />
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {allFields.map((key) => {
-        let value = features[key] ?? "";
-
-        // Fix: Use the normalized 'valence' for the 'happiness' slider.
-        if (key === "happiness" && features.valence) {
-          value = features.valence;
-        }
+        // Use 'valence' for the 'happiness' slider, otherwise use the feature's key.
+        const featureKey = key === 'happiness' ? 'valence' : key;
+        let value = features[featureKey] ?? "";
 
         if (sliderFields.has(key)) {
           return (
-            <SliderInput key={key} label={key} value={value * 100} onChange={v => handleInputChange(key, v / 100)} />
+            <SliderInput 
+              key={key} 
+              label={key} 
+              value={value > 1 ? value : value * 100} onChange={v => handleInputChange(featureKey, v / 100)} />
           );
         }
         if (key === "explicit") {

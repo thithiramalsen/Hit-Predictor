@@ -92,16 +92,30 @@ def save_clean_csv(raw_csv_path, out_path="data/Spotify_clean.csv"):
 
 def load_impute_values(path=None):
     path = path or os.path.join(MODEL_DIR, "impute_values.joblib")
-    return joblib.load(path)
+    if os.path.exists(path):
+        return joblib.load(path)
+    raise FileNotFoundError(f"impute_values.joblib not found at expected path: {path}")
 
-def prepare_dataframe_from_dict(feat_dict, impute_values=None):
+def prepare_dataframe_from_dict(feat_dict, preprocessor=None):
     import pandas as pd
-    # Use impute_values as defaults, update with feat_dict
-    if impute_values is None:
-        impute_values = load_impute_values()
-    data = impute_values.copy()
-    data.update(feat_dict)
-    df = pd.DataFrame([data])
+    
+    # If a preprocessor is provided, get the expected feature names from it.
+    # This is the most robust way to ensure the DataFrame has the correct structure.
+    if preprocessor:
+        expected_features = preprocessor.feature_names_in_
+    else:
+        # Fallback to all known features if no preprocessor is passed
+        expected_features = NUMERIC_FEATURES + BINARY_FEATURES + CATEGORICAL_FEATURES
+
+    # Create a dictionary for a single row, filling with defaults (0)
+    row_data = {feature: 0 for feature in expected_features}
+    
+    # Update the row with values from the input dictionary
+    for feature in expected_features:
+        if feature in feat_dict:
+            row_data[feature] = feat_dict[feature]
+            
+    df = pd.DataFrame([row_data], columns=expected_features)
     return df
 
 

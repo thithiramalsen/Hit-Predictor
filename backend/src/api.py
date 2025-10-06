@@ -1,26 +1,70 @@
 # api.py
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from .predict import predict_from_features_dict, normalize_extracted_features
-from .model_manager import get_available_models
-from .ocr_extract import extract_features_from_image # This is extract_from_image in ocr_extract.py
 from .utils import parse_key, parse_mode
 import shutil
 import tempfile 
 import requests
 import os
-import json  # <-- add this
+import json
+import uvicorn  # <-- Added for direct execution
+import asyncio
+
 
 app = FastAPI(title="Hit Predictor API")
+
+# Get the frontend URLs from environment variables, with defaults for local dev
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # Primary URL (Vite's default is 5173)
+FRONTEND_URL_ALT = os.getenv("FRONTEND_URL_ALT", "") # Secondary URL (for Vercel preview URLs)
+
+origins = [
+    "http://localhost:5173",  # Local Vite dev server
+    "http://localhost:3000",  # Local Next.js dev server
+]
+
+# Add environment-provided URLs if they exist
+if FRONTEND_URL:
+    origins.append(FRONTEND_URL)
+if FRONTEND_URL_ALT:
+    origins.append(FRONTEND_URL_ALT)
+
+# Handle Vercel domains
+for domain in ["hit-predictor.vercel.app", "hit-predictor-git-ver-e81b2c-thithira-malsens-projects-2676972b.vercel.app"]:
+    if domain not in origins:
+        origins.append(f"https://{domain}")
+
+# Remove duplicates and empty values
+origins = [origin for origin in origins if origin]
+origins = list(set(origins))
 
 # Enable CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # during dev, open for all
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Kick off model loading in the background to avoid blocking port binding on Render."""
+    try:
+        # Import inside the background thread to avoid heavy imports on the main thread
+        def warm_up():
+            from .model_manager import load_all_models_into_cache  # lazy import
+            load_all_models_into_cache()
+
+        # Run the expensive model cache warm-up in a background thread.
+        asyncio.create_task(asyncio.to_thread(warm_up))
+        print("[Startup] Triggered background model cache initialization.")
+    except Exception as e:
+        # Don't fail startup if background warm-up can't be scheduled.
+        print(f"[Startup] Warning: failed to schedule model cache init: {e}")
+
+@app.get("/health")
+def health():
+    return {"ok": True}
 
 def normalize_features(feat):
     out = feat.copy()
@@ -36,6 +80,11 @@ def normalize_features(feat):
         out["key"] = int(out["key"])
         if "mode" not in out or out["mode"] is None:
             out["mode"] = 1
+    
+    # Ensure 'explicit' is an integer, not a string '0' or '1'
+    if "explicit" in out:
+        out["explicit"] = int(out["explicit"])
+
     return out
 
 @app.get("/models")
@@ -43,20 +92,38 @@ def list_models():
     """
     Returns available ML models.
     """
+    # Lazy import to avoid heavy imports on startup
+    from .model_manager import get_available_models
     models = get_available_models()
     return {"models": models}
 
 @app.post("/ocr")
 async def ocr(file: UploadFile = File(...)):
+    # Lazy import to avoid heavy easyocr/torch import at startup
+    from .ocr_extract import extract_features_from_image
     tmpdir = tempfile.mkdtemp()
-    tmp_path = os.path.join(tmpdir, file.filename)
+    # Use a default filename if one is not provided (e.g., from a paste event)
+    filename = file.filename or "pasted_image.png"
+    tmp_path = os.path.join(tmpdir, filename)
     with open(tmp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     features = extract_features_from_image(tmp_path)
     print("[API] OCR extracted features:", features) # Debug
-    features = normalize_extracted_features(features)
-    print("[API] Normalized features sent to frontend:", features) # Debug
-    return {"features": features}
+
+    # Normalize percentage values from OCR (0-100 -> 0-1) and map happiness to valence
+    normalized_features = features.copy()
+    for key in ['danceability', 'energy', 'happiness', 'acousticness', 'instrumentalness', 'liveness', 'speechiness']:
+        if key in normalized_features and normalized_features[key] > 1:
+            normalized_features[key] /= 100.0
+
+    # If 'happiness' was extracted, map it to 'valence' for model compatibility
+    if 'happiness' in normalized_features:
+        normalized_features['valence'] = normalized_features.pop('happiness')
+    elif 'valence' in normalized_features and normalized_features['valence'] > 1:
+        # Also normalize valence if it exists and is on a 0-100 scale
+        normalized_features['valence'] /= 100.0
+
+    return {"features": normalized_features}
 
 @app.post("/predict")
 async def predict(model_id: str = Form(...), features: str = Form(...)):
@@ -76,23 +143,16 @@ async def predict(model_id: str = Form(...), features: str = Form(...)):
     features_dict = normalize_features(features_dict)
     print(f"[API] Normalized features_dict: {features_dict}")
 
-    # Discover models and get model_path
-    models = {}
-    try:
-        from .model_manager import discover_models
-        models = discover_models("models")
-    except Exception as e:
-        print("Failed to discover models:", e)
-        raise
+    # We need the original model file path for the label encoder, not the cached object.
+    from .model_manager import discover_models, predict_from_features_dict
+    discovered_models = discover_models("models")
+    model_file_path = discovered_models.get(model_id)
 
-    model_path = models.get(model_id)
-    if not model_path:
-        print(f"Model id '{model_id}' not found in discovered models: {list(models.keys())}")
+    if not model_file_path:
+        print(f"Model id '{model_id}' not found in discovered models: {list(discovered_models.keys())}")
         raise ValueError(f"Model id '{model_id}' not found.")
 
-    print(f"[API] Using model_path: {model_path}")
-
-    result = predict_from_features_dict(features_dict, model_id, model_path)
+    result = predict_from_features_dict(features_dict, model_id, model_file_path)
     print(f"[API] Prediction result: {result}")
 
     # If regression, print popularity score directly for clarity
@@ -100,3 +160,11 @@ async def predict(model_id: str = Form(...), features: str = Form(...)):
         print(f"[API] Predicted popularity score: {result['predicted_popularity']}")
 
     return {"prediction": result}
+
+# Add this section to make the script directly runnable
+if __name__ == "__main__":
+    # Get port from environment variable or default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    # Start the server with the correct host and port
+    print(f"[Server] Starting Uvicorn on 0.0.0.0:{port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)

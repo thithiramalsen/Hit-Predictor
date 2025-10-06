@@ -3,17 +3,10 @@ numpy>=1.24
 scikit-learn>=1.2
 xgboost>=1.7
 joblib
-matplotlib
-seaborn
-streamlit
-opencv-python-headless
-pillow
-pytesseract
-
-tqdm
+Pillow
+easyocr
 
 fastapi
 uvicorn
 python-multipart
-imbalanced-learn
 tensorflow-cpu

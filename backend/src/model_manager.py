@@ -6,44 +6,43 @@ from tensorflow import keras
 from .preprocessing import prepare_dataframe_from_dict
 
 import pandas as pd
+from functools import lru_cache
 from .preprocessing import prepare_dataframe_from_dict
 
-# --- Vercel Path Correction ---
-# Get the absolute path to the 'models' directory relative to this script
-MODELS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'models'))
+MODEL_CACHE = {}
 
-def discover_models(model_root="models"):
+# Define the absolute path to the 'models' directory relative to this file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(BASE_DIR, "..", "models")
+
+def discover_models(model_root=MODELS_DIR):
     """Recursively discover model files in all subfolders, skipping preprocessors."""
     models = {}
-    for root, dirs, files in os.walk(MODELS_DIR): # Use the absolute path
+    for root, _, files in os.walk(model_root):
         for fname in files:
             # Debug: Log every file found
             print(f"[discover_models] Found file: {fname} in {root}")
-            if "preprocessor" in fname:
+            if "preprocessor" in fname or "label_encoder" in fname:
                 continue
-            if fname.endswith(".joblib"):
-                # Example: model_xg_r.joblib -> xgboost_regression
-                model_id = None
-                model_path = os.path.join(root, fname)
+            
+            model_path = os.path.join(root, fname)
+            
+            # More robust model identification
+            if fname.endswith((".joblib", ".keras")):
                 if "xg_r" in fname:
-                    models["xgboost_regression"] = os.path.join(root, fname)
+                    models["xgboost_regression"] = model_path
                 elif "xg_c" in fname:
-                    models["xgboost_classification"] = os.path.join(root, fname)
-                elif "rf_r" in fname:
-                    models["randomforest_regression"] = os.path.join(root, fname)
-                elif "rf_c" in fname:
-                    models["randomforest_classification"] = os.path.join(root, fname)
-                # --- FIX: Add discovery for Linear Regression ---
-                elif "lr_r" in fname:
-                    models["linear_regression"] = os.path.join(root, fname)
-                elif "lr_c" in fname:
-                    models["linear_classification"] = os.path.join(root, fname)
-            elif fname.endswith(".keras"):
-                # Neural network regression support
-                if "nn_r" in fname:
-                    models["neuralnet_regression"] = os.path.join(root, fname)
+                    models["xgboost_classification"] = model_path
+                elif "nn_r" in fname:
+                    models["neuralnet_regression"] = model_path
                 elif "nn_c" in fname:
-                    models["neuralnet_classification"] = os.path.join(root, fname)
+                    models["neuralnet_classification"] = model_path
+                elif "rf_r" in fname:
+                    models["randomforest_regression"] = model_path
+                elif "rf_c" in fname:
+                    models["randomforest_classification"] = model_path
+                elif "lr_r" in fname:
+                    models["linear_regression"] = model_path
     return models
 
 
@@ -105,10 +104,34 @@ def load_artifacts(model_path, impute_values_path=None):
     return model, preproc, impute_values
 
 
-def predict_from_features_dict(feat_dict, model_type, model_path):
+@lru_cache(maxsize=1)
+def load_all_models_into_cache(model_root="models"):
+    """
+    Discovers all models and pre-loads them into a cache dictionary.
+    This should be called once at application startup.
+    """
+    if MODEL_CACHE:
+        return
+
+    print("[Cache] Initializing model cache...")
+    discovered_paths = discover_models(model_root)
+    for model_id, model_path in discovered_paths.items():
+        print(f"[Cache] Loading model: {model_id}")
+        model, preproc, _ = load_artifacts(model_path)
+        MODEL_CACHE[model_id] = {"model": model, "preprocessor": preproc}
+    print("[Cache] Model cache initialization complete.")
+
+
+def predict_from_features_dict(feat_dict, model_type, model_file_path):
     """Run prediction given a feature dictionary, model type, and model path."""
-    model, preproc, impute_values = load_artifacts(model_path)
-    df = prepare_dataframe_from_dict(feat_dict, impute_values)
+    model_artifacts = MODEL_CACHE.get(model_type)
+    if not model_artifacts:
+        raise ValueError(f"Model '{model_type}' not found in cache. Ensure models are loaded at startup.")
+
+    model = model_artifacts["model"]
+    preproc = model_artifacts["preprocessor"]
+    
+    df = prepare_dataframe_from_dict(feat_dict, preprocessor=preproc)
     X = preproc.transform(df)
 
     # XGBoost
@@ -116,7 +139,6 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
         dmatrix = xgb.DMatrix(X)
         pred = float(model.predict(dmatrix)[0])
         return {"predicted_popularity": pred}  # <-- always return object
-        return float(model.predict(dmatrix)[0])
 
     elif "xgboost" in model_type and "classification" in model_type:
         pred_prob = model.predict_proba(X)[0][1]
@@ -149,7 +171,7 @@ def predict_from_features_dict(feat_dict, model_type, model_path):
         pred_class_idx = int(np.argmax(preds_proba))
         pred_prob = float(np.max(preds_proba))
         # Load the label encoder to get the string label
-        le_path = os.path.join(os.path.dirname(model_path), "label_encoder.joblib")
+        le_path = os.path.join(os.path.dirname(model_file_path), "label_encoder.joblib")
         if os.path.exists(le_path):
             le = joblib.load(le_path)
             pred_class_label = le.inverse_transform([pred_class_idx])[0]
@@ -164,12 +186,7 @@ def get_available_models():
     Returns a list of available models for the API.
     Each model should be a dict with 'id' and 'label'.
     """
-    # Define the models that the frontend explicitly supports.
-    SUPPORTED_MODEL_IDS = [
-        "xgboost_regression",
-        "neuralnet_classification"
-    ]
-    models = discover_models() # Will use the corrected MODELS_DIR path
+    models = discover_models()
     # Debug: Log the models that will be sent to the frontend
     print(f"[get_available_models] Discovered models: {list(models.keys())}")
     # Filter discovered models to only include those supported by the frontend.

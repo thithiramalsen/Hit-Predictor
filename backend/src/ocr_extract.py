@@ -1,28 +1,17 @@
 # backend/src/ocr_extract.py
 import re
 from PIL import Image
-import pytesseract
 import easyocr
-import numpy as np
 import os
-from .utils import enhance_image_for_ocr
 
-# Use Tesseract in production (Vercel) as it's lighter than EasyOCR.
-# The VERCEL environment variable is set by Vercel.
-# Locally, you can set USE_EASYOCR=True in your environment to use EasyOCR.
-USE_EASYOCR = os.getenv("USE_EASYOCR", "False").lower() in ("true", "1") and not os.getenv("VERCEL")
+# LAZY LOADING: Initialize the reader only when it's first needed to save memory at startup.
+EASYOCR_READER = None
 
-def ocr_with_tesseract(pil_image: Image.Image):
-    # optional enhancement to help tesseract
-    img = pil_image.convert("RGB")
-    text = pytesseract.image_to_string(img, lang="eng", config='--psm 6')
-    return text
-
-def ocr_with_easyocr(image_path):
-    reader = easyocr.Reader(["en"], gpu=False)
-    res = reader.readtext(image_path, detail=0)
-    text = "\n".join(res)
-    return text
+def get_easyocr_reader():
+    global EASYOCR_READER
+    if EASYOCR_READER is None:
+        EASYOCR_READER = easyocr.Reader(["en"], gpu=False)
+    return EASYOCR_READER
 
 def extract_features_from_text(text: str) -> dict:
     print("RAW OCR TEXT:\n", text)  # Debug print
@@ -112,22 +101,17 @@ def extract_from_image(image_path_or_pil):
     # Accept PIL Image or path
     tmp_path = None
     if isinstance(image_path_or_pil, str):
-        path = image_path_or_pil
-        if USE_EASYOCR:
-            text = ocr_with_easyocr(path)
-        else:
-            img = Image.open(path)
-            text = ocr_with_tesseract(img)
+        reader = get_easyocr_reader()
+        res = reader.readtext(image_path_or_pil, detail=0)
+        text = "\n".join(res)
     else:
         # PIL Image
         pil_img = image_path_or_pil
-        pil_img = enhance_image_for_ocr(pil_img)
         tmp_path = "tmp_ocr.png"
         pil_img.save(tmp_path)
-        if USE_EASYOCR:
-            text = ocr_with_easyocr(tmp_path)
-        else:
-            text = ocr_with_tesseract(pil_img)
+        reader = get_easyocr_reader()
+        res = reader.readtext(tmp_path, detail=0)
+        text = "\n".join(res)
     if tmp_path and os.path.exists(tmp_path):
         try:
             os.remove(tmp_path)
