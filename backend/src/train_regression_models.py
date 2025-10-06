@@ -11,13 +11,11 @@ from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_err
 from tensorflow import keras
 from tensorflow.keras import layers, callbacks
 
-# This is a common trick in Python. We're adding the project's 'backend' directory
-# to the list of places Python looks for files. This lets us import our own
-# 'preprocessing.py' module from the 'src' folder like a regular library.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src.preprocessing import basic_clean, build_pipeline
+# Since this script is now inside the 'src' package, we can use a relative import.
+from .preprocessing import basic_clean, build_pipeline
 
 # --- Configuration ---
+# The BASE_DIR calculation needs to go up one more level ('..') because the file is deeper in the directory structure.
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 DATA_PATH = os.path.join(BASE_DIR, "backend", "data", "Spotify.csv")
 MODELS_BASE_DIR = os.path.join(BASE_DIR, "backend", "models")
