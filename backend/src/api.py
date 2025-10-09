@@ -13,6 +13,9 @@ import asyncio
 
 app = FastAPI(title="Hit Predictor API")
 
+# Global state to track model loading status
+API_STATE = {"models_loaded": False, "loading_error": None}
+
 # Get the frontend URLs from environment variables, with defaults for local dev
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # Primary URL (Vite's default is 5173)
 FRONTEND_URL_ALT = os.getenv("FRONTEND_URL_ALT", "") # Secondary URL (for Vercel preview URLs)
@@ -52,12 +55,19 @@ async def startup_event():
     try:
         # Import inside the background thread to avoid heavy imports on the main thread
         def warm_up():
-            from .model_manager import load_all_models_into_cache  # lazy import
-            load_all_models_into_cache()
+            """Loads models and updates the global API_STATE."""
+            try:
+                from .model_manager import load_all_models_into_cache  # lazy import
+                load_all_models_into_cache()
+                API_STATE["models_loaded"] = True
+                print("[Startup] Background model cache initialization complete.")
+            except Exception as e:
+                API_STATE["loading_error"] = str(e)
+                print(f"[Startup] Error during background model cache initialization: {e}")
 
         # Run the expensive model cache warm-up in a background thread.
         asyncio.create_task(asyncio.to_thread(warm_up))
-        print("[Startup] Triggered background model cache initialization.")
+        print("[Startup] Background model cache initialization has been triggered.")
     except Exception as e:
         # Don't fail startup if background warm-up can't be scheduled.
         print(f"[Startup] Warning: failed to schedule model cache init: {e}")
@@ -65,6 +75,11 @@ async def startup_event():
 @app.get("/health")
 def health():
     return {"ok": True}
+
+@app.get("/status")
+def get_status():
+    """Returns the current loading status of the models."""
+    return API_STATE
 
 def normalize_features(feat):
     out = feat.copy()

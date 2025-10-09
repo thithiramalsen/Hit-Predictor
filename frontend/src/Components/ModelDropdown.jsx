@@ -9,29 +9,48 @@ const MODEL_MAP = {
 
 export function ModelDropdown({ selected, onSelect, onModelsLoaded }) {
   const [models, setModels] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('loading'); // 'loading', 'ready', 'error'
 
   useEffect(() => {
-    api.getModels()
-      .then(models => {
-        // Debug: Log the models received from the API
-        console.log("All models from API:", models);
-        // Filter for only the models we want to show and map their labels
-        const filteredAndMapped = models
-          .filter(m => MODEL_MAP[m.id])
-          .map(m => ({ ...m, label: MODEL_MAP[m.id] }));
-        console.log("Filtered models for dropdown:", filteredAndMapped);
-        if (onModelsLoaded) {
-          onModelsLoaded(filteredAndMapped);
+    // Function to fetch the models once the backend is ready
+    const fetchModels = () => {
+      api.getModels()
+        .then(models => {
+          const filteredAndMapped = models
+            .filter(m => MODEL_MAP[m.id])
+            .map(m => ({ ...m, label: MODEL_MAP[m.id] }));
+          
+          if (onModelsLoaded) {
+            onModelsLoaded(filteredAndMapped);
+          }
+          setModels(filteredAndMapped);
+          setStatus('ready');
+        })
+        .catch(error => {
+          console.error("Failed to fetch models:", error);
+          setStatus('error');
+        });
+    };
+
+    // Poll the backend status endpoint
+    const intervalId = setInterval(async () => {
+      try {
+        const backendStatus = await api.getStatus();
+        if (backendStatus.models_loaded) {
+          clearInterval(intervalId);
+          fetchModels();
+        } else if (backendStatus.loading_error) {
+          clearInterval(intervalId);
+          setStatus('error');
+          console.error("Backend model loading error:", backendStatus.loading_error);
         }
-        setModels(filteredAndMapped);
-      })
-      .catch((error) => {
-        console.error("Failed to fetch models:", error);
-        setModels([]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+      } catch (error) {
+        console.log("Waiting for backend to be ready...");
+      }
+    }, 2500); // Poll every 2.5 seconds
+
+    return () => clearInterval(intervalId); // Cleanup on unmount
+  }, [onModelsLoaded]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -43,12 +62,18 @@ export function ModelDropdown({ selected, onSelect, onModelsLoaded }) {
           const model = models.find(m => m.id === e.target.value);
           onSelect(model);
         }}
-        disabled={loading}
+        disabled={status !== 'ready'}
       >
-        <option value="">-- Choose Model --</option>
-        {models.map(model => (
-          <option key={model.id} value={model.id}>{model.label}</option>
-        ))}
+        {status === 'loading' && <option>Warming up the models...</option>}
+        {status === 'error' && <option>Error loading models</option>}
+        {status === 'ready' && (
+          <>
+            <option value="">-- Choose Model --</option>
+            {models.map(model => (
+              <option key={model.id} value={model.id}>{model.label}</option>
+            ))}
+          </>
+        )}
       </select>
     </div>
   );
