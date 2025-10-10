@@ -86,6 +86,11 @@ cd Hit-Predictor
 ```bash
 cd backend
 ```
+### activate .venv
+```bash
+.\.venv\Scripts\Activate.ps1
+
+```
 ###  Install all required dependencies:
 ```bash
 pip install -r requirements.txt
