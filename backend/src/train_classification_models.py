@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report, ConfusionMatrixDisplay
-from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, f1_score, classification_report, roc_curve, auc
+from sklearn.preprocessing import LabelEncoder, label_binarize
 from imblearn.over_sampling import SMOTE
 from tensorflow import keras
 from tensorflow.keras import layers, callbacks
@@ -42,8 +42,22 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, preprocessor):
     )
     model.fit(X_train, y_train)
 
-    preds = model.predict(X_test)
-    print(f"Accuracy: {accuracy_score(y_test, preds):.3f}, F1-Score: {f1_score(y_test, preds):.3f}")
+    preds_class = model.predict(X_test)
+    preds_proba = model.predict_proba(X_test)[:, 1]
+    print(f"Accuracy: {accuracy_score(y_test, preds_class):.3f}, F1-Score: {f1_score(y_test, preds_class):.3f}")
+
+    # --- ROC Curve Evaluation ---
+    fpr, tpr, _ = roc_curve(y_test, preds_proba)
+    roc_auc = auc(fpr, tpr)
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve for XGBoost Classifier')
+    plt.legend(loc="lower right")
+    plt.savefig(os.path.join(model_dir, "roc_curve_xg_c.png"))
+    plt.close()
 
     # Save artifacts
     joblib.dump(model, os.path.join(model_dir, "model_xg_c.joblib"))
@@ -62,8 +76,22 @@ def train_random_forest_classifier(X_train, X_test, y_train, y_test, preprocesso
     model = RandomForestClassifier(class_weight="balanced", random_state=42, n_jobs=-1, n_estimators=200, max_depth=15)
     model.fit(X_train, y_train)
 
-    preds = model.predict(X_test)
-    print(f"Accuracy: {accuracy_score(y_test, preds):.3f}, F1-Score: {f1_score(y_test, preds):.3f}")
+    preds_class = model.predict(X_test)
+    preds_proba = model.predict_proba(X_test)[:, 1]
+    print(f"Accuracy: {accuracy_score(y_test, preds_class):.3f}, F1-Score: {f1_score(y_test, preds_class):.3f}")
+
+    # --- ROC Curve Evaluation ---
+    fpr, tpr, _ = roc_curve(y_test, preds_proba)
+    roc_auc = auc(fpr, tpr)
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve for Random Forest Classifier')
+    plt.legend(loc="lower right")
+    plt.savefig(os.path.join(model_dir, "roc_curve_rf_c.png"))
+    plt.close()
 
     # Save artifacts
     joblib.dump(model, os.path.join(model_dir, "model_rf_c.joblib"))
@@ -121,6 +149,27 @@ def train_neural_network_classifier(X_train, X_test, y_train, y_test, preprocess
 
     print(f"Accuracy: {accuracy_score(y_test, preds):.3f}")
     print(classification_report(y_test, preds, target_names=label_encoder.classes_, zero_division=0))
+
+    # --- ROC Curve Evaluation (One-vs-Rest for Multi-class) ---
+    y_test_binarized = label_binarize(y_test, classes=range(num_classes))
+    fpr, tpr, roc_auc = {}, {}, {}
+    plt.figure()
+    colors = ['aqua', 'darkorange', 'cornflowerblue']
+    for i, color in zip(range(num_classes), colors):
+        fpr[i], tpr[i], _ = roc_curve(y_test_binarized[:, i], preds_probs[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+        plt.plot(fpr[i], tpr[i], color=color, lw=2,
+                 label=f'ROC curve of class {label_encoder.classes_[i]} (area = {roc_auc[i]:.2f})')
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=2)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Multi-class ROC for Neural Network Classifier')
+    plt.legend(loc="lower right")
+    plt.savefig(os.path.join(model_dir, "roc_curve_nn_c.png"))
+    plt.close()
 
     # Save artifacts
     joblib.dump(preprocessor, os.path.join(model_dir, "preprocessor_nn_c.joblib"))
