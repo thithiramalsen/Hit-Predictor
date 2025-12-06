@@ -4,10 +4,12 @@ import pandas as pd
 import joblib
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, classification_report, roc_curve, auc
+from sklearn.metrics import accuracy_score, f1_score, classification_report, roc_curve, auc, confusion_matrix
 from sklearn.preprocessing import LabelEncoder, label_binarize
 from imblearn.over_sampling import SMOTE
 from tensorflow import keras
@@ -59,6 +61,17 @@ def train_xgboost_classifier(X_train, X_test, y_train, y_test, preprocessor):
     plt.savefig(os.path.join(model_dir, "roc_curve_xg_c.png"))
     plt.close()
 
+    # --- Confusion Matrix ---
+    cm = confusion_matrix(y_test, preds_class)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=["Non-Hit", "Hit"], yticklabels=["Non-Hit", "Hit"])
+    plt.title("Confusion Matrix for XGBoost Classifier")
+    plt.ylabel("Actual")
+    plt.xlabel("Predicted")
+    plt.tight_layout()
+    plt.savefig(os.path.join(model_dir, "confusion_matrix_xg_c.png"))
+    plt.close()
+
     # Save artifacts
     joblib.dump(model, os.path.join(model_dir, "model_xg_c.joblib"))
     joblib.dump(preprocessor, os.path.join(model_dir, "preprocessor_xg_c.joblib"))
@@ -93,16 +106,28 @@ def train_random_forest_classifier(X_train, X_test, y_train, y_test, preprocesso
     plt.savefig(os.path.join(model_dir, "roc_curve_rf_c.png"))
     plt.close()
 
+    # --- Confusion Matrix ---
+    cm = confusion_matrix(y_test, preds_class)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=["Non-Hit", "Hit"], yticklabels=["Non-Hit", "Hit"])
+    plt.title("Confusion Matrix for Random Forest Classifier")
+    plt.ylabel("Actual")
+    plt.xlabel("Predicted")
+    plt.tight_layout()
+    plt.savefig(os.path.join(model_dir, "confusion_matrix_rf_c.png"))
+    plt.close()
+
     # Save artifacts
     joblib.dump(model, os.path.join(model_dir, "model_rf_c.joblib"))
     joblib.dump(preprocessor, os.path.join(model_dir, "preprocessor_rf_c.joblib"))
     print("✅ Random Forest Classifier model and preprocessor saved.")
 
 
-def train_neural_network_classifier(X_train, X_test, y_train, y_test, preprocessor, label_encoder):
+def train_neural_network_classifier(X_train, X_test, y_train, y_test, preprocessor):
     """Trains, evaluates, and saves the Neural Network Classifier."""
     print("\n--- Training Neural Network Classifier ---")
-    model_dir = os.path.join(MODELS_BASE_DIR, "neuralnet_cls")
+    # Use the same 'neuralnet' directory as the regression model for consistency
+    model_dir = os.path.join(MODELS_BASE_DIR, "neuralnet")
     os.makedirs(model_dir, exist_ok=True)
 
     # Here we use another technique for class imbalance: SMOTE (Synthetic Minority Over-sampling Technique).
@@ -111,24 +136,22 @@ def train_neural_network_classifier(X_train, X_test, y_train, y_test, preprocess
     smote = SMOTE(random_state=42)
     X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
 
-    # This function defines the architecture of our neural network for classification.
-    # The final layer uses 'softmax' activation, which is standard for multi-class problems
-    # as it outputs a probability distribution across all classes.
-    def build_model(input_dim, num_classes):
+    # This function defines the architecture of our neural network for binary classification.
+    # The final layer uses 'sigmoid' activation to output a single probability (e.g., probability of being a "Hit").
+    def build_model(input_dim):
         model = keras.Sequential([
             layers.Input(shape=(input_dim,)),
             layers.Dense(256, activation="relu"), layers.Dropout(0.3),
             layers.Dense(128, activation="relu"), layers.Dropout(0.2),
             layers.Dense(64, activation="relu"),
-            layers.Dense(num_classes, activation="softmax")
+            layers.Dense(1, activation="sigmoid") # Binary output
         ])
-        # For multi-class classification with integer labels (like 0, 1, 2),
-        # we use 'sparse_categorical_crossentropy' as the loss function.
-        model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+        # For binary classification, we use 'binary_crossentropy' as the loss function.
+        model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
         return model
 
-    num_classes = len(label_encoder.classes_)
-    model = build_model(X_train.shape[1], num_classes)
+    # The model is now binary, so we don't need num_classes.
+    model = build_model(X_train.shape[1])
     checkpoint_path = os.path.join(model_dir, "best_model_nn_c.keras")
     
     # We use callbacks to stop training early if it's not improving and to save the best version of the model.
@@ -144,38 +167,40 @@ def train_neural_network_classifier(X_train, X_test, y_train, y_test, preprocess
 
     # We explicitly load the best model saved by ModelCheckpoint for the final evaluation.
     best_model = keras.models.load_model(checkpoint_path)
-    preds_probs = best_model.predict(X_test)
-    preds = np.argmax(preds_probs, axis=1)
+    preds_proba = best_model.predict(X_test).flatten()
+    preds_class = (preds_proba >= 0.5).astype(int)
 
-    print(f"Accuracy: {accuracy_score(y_test, preds):.3f}")
-    print(classification_report(y_test, preds, target_names=label_encoder.classes_, zero_division=0))
+    print(f"Accuracy: {accuracy_score(y_test, preds_class):.3f}, F1-Score: {f1_score(y_test, preds_class):.3f}")
+    print(classification_report(y_test, preds_class, target_names=["Non-Hit", "Hit"], zero_division=0))
 
-    # --- ROC Curve Evaluation (One-vs-Rest for Multi-class) ---
-    y_test_binarized = label_binarize(y_test, classes=range(num_classes))
-    fpr, tpr, roc_auc = {}, {}, {}
+    # --- ROC Curve Evaluation ---
+    fpr, tpr, _ = roc_curve(y_test, preds_proba)
+    roc_auc = auc(fpr, tpr)
     plt.figure()
-    colors = ['aqua', 'darkorange', 'cornflowerblue']
-    for i, color in zip(range(num_classes), colors):
-        fpr[i], tpr[i], _ = roc_curve(y_test_binarized[:, i], preds_probs[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
-        plt.plot(fpr[i], tpr[i], color=color, lw=2,
-                 label=f'ROC curve of class {label_encoder.classes_[i]} (area = {roc_auc[i]:.2f})')
-
-    plt.plot([0, 1], [0, 1], 'k--', lw=2)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Multi-class ROC for Neural Network Classifier')
+    plt.title('ROC Curve for Neural Network Classifier')
     plt.legend(loc="lower right")
     plt.savefig(os.path.join(model_dir, "roc_curve_nn_c.png"))
     plt.close()
 
+    # --- Confusion Matrix ---
+    cm = confusion_matrix(y_test, preds_class)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=["Non-Hit", "Hit"], yticklabels=["Non-Hit", "Hit"])
+    plt.title("Confusion Matrix for Neural Network Classifier")
+    plt.ylabel("Actual")
+    plt.xlabel("Predicted")
+    plt.tight_layout()
+    plt.savefig(os.path.join(model_dir, "confusion_matrix_nn_c.png"))
+    plt.close()
+
     # Save artifacts
     joblib.dump(preprocessor, os.path.join(model_dir, "preprocessor_nn_c.joblib"))
-    joblib.dump(label_encoder, os.path.join(model_dir, "label_encoder.joblib"))
     print(f"✅ Neural Network Classifier model saved to {checkpoint_path}.")
-    print("✅ Neural Network preprocessor and label encoder saved.")
+    print("✅ Neural Network preprocessor saved.")
 
 
 def main():
@@ -185,7 +210,7 @@ def main():
     df = pd.read_csv(DATA_PATH)
     df_clean = basic_clean(df)
 
-    # --- Task 1: Binary Classification (for XGBoost and Random Forest) ---
+    # --- Binary Classification (for all models) ---
     print("\n--- Preparing for Binary Classification (Hit vs. Non-Hit) ---")
     # We define a "Hit" as any song with a popularity score of 70 or higher. This creates our binary target variable.
     y_binary = (df_clean["popularity"] >= 70).astype(int)
@@ -204,32 +229,8 @@ def main():
     
     train_xgboost_classifier(X_train_bin, X_test_bin, y_train_bin, y_test_bin, preprocessor_binary)
     train_random_forest_classifier(X_train_bin, X_test_bin, y_train_bin, y_test_bin, preprocessor_binary)
-
-    # --- Task 2: Multi-class Classification (for the Neural Network) ---
-    print("\n--- Preparing for Multi-class Classification (Low/Medium/High) ---")
-    # Here, we create a different target variable by binning popularity into three categories.
-    bins = [0, 40, 70, 100]
-    labels = ["Low", "Medium", "High"]
-    df_clean["popularity_class"] = pd.cut(df_clean["popularity"], bins=bins, labels=labels, include_lowest=True)
-
-    y_multi = df_clean["popularity_class"].values
-    # We drop the original popularity and the new class label from our features.
-    X_df_multi = df_clean.drop(columns=["popularity", "popularity_class", "year"], errors="ignore")
-
-    preprocessor_multi = build_pipeline()
-    X_processed_multi = preprocessor_multi.fit_transform(X_df_multi)
-
-    # Neural networks need numeric labels. The LabelEncoder converts "Low", "Medium", "High" into 0, 1, 2.
-    # We save this encoder so we can decode the model's predictions later.
-    le = LabelEncoder()
-    y_multi_encoded = le.fit_transform(y_multi)
-
-    # We do another stratified split for this multi-class task.
-    X_train_multi, X_test_multi, y_train_multi, y_test_multi = train_test_split(
-        X_processed_multi, y_multi_encoded, test_size=0.2, random_state=42, stratify=y_multi_encoded
-    )
-
-    train_neural_network_classifier(X_train_multi, X_test_multi, y_train_multi, y_test_multi, preprocessor_multi, le)
+    # The neural network now also uses the same binary data.
+    train_neural_network_classifier(X_train_bin, X_test_bin, y_train_bin, y_test_bin, preprocessor_binary)
 
     print("\n🎉 All classification models trained successfully!")
 
