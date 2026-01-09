@@ -105,7 +105,7 @@ def load_artifacts(model_path, impute_values_path=None):
 
 
 @lru_cache(maxsize=1)
-def load_all_models_into_cache(model_root="models"):
+def load_all_models_into_cache(model_root="models", progress_callback=None):
     """
     Discovers all models and pre-loads them into a cache dictionary.
     This should be called once at application startup.
@@ -115,10 +115,28 @@ def load_all_models_into_cache(model_root="models"):
 
     print("[Cache] Initializing model cache...")
     discovered_paths = discover_models(model_root)
-    for model_id, model_path in discovered_paths.items():
+    total = len(discovered_paths)
+    if total == 0:
+        print("[Cache] No models discovered.")
+        if progress_callback:
+            try:
+                progress_callback(100)
+            except Exception:
+                pass
+        return
+
+    for idx, (model_id, model_path) in enumerate(discovered_paths.items()):
         print(f"[Cache] Loading model: {model_id}")
         model, preproc, _ = load_artifacts(model_path)
         MODEL_CACHE[model_id] = {"model": model, "preprocessor": preproc}
+        # Report progress as integer percent
+        if progress_callback:
+            try:
+                percent = int(((idx + 1) / total) * 100)
+                progress_callback(percent)
+            except Exception:
+                # Don't let progress reporting break loading
+                pass
     print("[Cache] Model cache initialization complete.")
 
 

@@ -14,7 +14,7 @@ import asyncio
 app = FastAPI(title="Hit Predictor API")
 
 # Global state to track model loading status
-API_STATE = {"models_loaded": False, "loading_error": None}
+API_STATE = {"models_loaded": False, "loading_error": None, "progress": 0}
 
 # Get the frontend URLs from environment variables, with defaults for local dev
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # Primary URL (Vite's default is 5173)
@@ -55,11 +55,22 @@ async def startup_event():
     try:
         # Import inside the background thread to avoid heavy imports on the main thread
         def warm_up():
-            """Loads models and updates the global API_STATE."""
+            """Loads models and updates the global API_STATE, including progress."""
             try:
                 from .model_manager import load_all_models_into_cache  # lazy import
-                load_all_models_into_cache()
+
+                def progress_cb(percent: int):
+                    try:
+                        API_STATE["progress"] = int(percent)
+                        if int(percent) >= 100:
+                            API_STATE["models_loaded"] = True
+                    except Exception:
+                        pass
+
+                # Call loader with progress callback so frontend can show percent
+                load_all_models_into_cache(progress_callback=progress_cb)
                 API_STATE["models_loaded"] = True
+                API_STATE["progress"] = 100
                 print("[Startup] Background model cache initialization complete.")
             except Exception as e:
                 API_STATE["loading_error"] = str(e)
